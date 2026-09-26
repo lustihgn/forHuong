@@ -76,7 +76,7 @@
   <div class="wish-modal" id="wishModal" aria-hidden="true">
     <section class="wish-card" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
       <button class="wish-close" id="wishClose" type="button" aria-label="Đóng">×</button>
-      <img class="memory-image" src="anh123445....jpg" alt="Ảnh kỷ niệm" />
+      <img class="memory-image" src="anh1.jpg" alt="Ảnh kỷ niệm" />
       <div class="wish-content">
         <h2 id="wishTitle">Một lời nhắn dành cho bạn</h2>
         <p class="wish-selected" id="wishSelected"></p>
@@ -124,7 +124,13 @@
     let targetCameraYaw = 0;
     let targetCameraPitch = 0;
     let sphereSpinAngle = 0;
+    let sphereZoom = 1;
+    let targetSphereZoom = 1;
     let dragPointer = null;
+    const activePointers = new Map();
+    let pinchStartDistance = 0;
+    let pinchStartZoom = 1;
+    let wasPinching = false;
     let lastInteractionTime = 0;   // thời điểm tương tác gần nhất, để bật auto-rotate khi rảnh
     const wishHitTargets = [];
     const wishModal = document.getElementById("wishModal");
@@ -140,7 +146,21 @@
     ];
 
     function openWish(item) {
-      document.querySelector(".memory-image").src = `anh${(Math.abs(item.index) % sphereWishes.length) + 1}.jpg`;
+      const image = document.querySelector(".memory-image");
+      const imageCount = 12;
+      let attempts = 0;
+      let imageIndex = Math.abs(item.index) % imageCount + 1;
+      image.onerror = () => {
+        attempts++;
+        if (attempts >= imageCount) {
+          image.onerror = null;
+          image.removeAttribute("src");
+          return;
+        }
+        imageIndex = imageIndex % imageCount + 1;
+        image.src = `anh${imageIndex}.jpg`;
+      };
+      image.src = `anh${imageIndex}.jpg`;
       document.getElementById("wishSelected").textContent = item.wish;
       document.getElementById("wishMessage").textContent = extraWishes[
         Math.abs(item.index) % extraWishes.length
@@ -540,10 +560,12 @@
         const py = centerY + (ry + RING_Y_OFFSET) * scale;
         const depthFade = isBack ? 0.75 : 1;
 
-        ctx.globalAlpha = p.opacity * visible * depthFade;
+        // Giữ vành đai vừa đủ rõ khi thu nhỏ, tránh các hạt quá sáng và lớn.
+        const minOpacity = particlesToDraw === ringParticles ? 0.58 : 0.48;
+        ctx.globalAlpha = Math.max(minOpacity, p.opacity) * visible * depthFade;
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(px, py, p.size * scale, 0, Math.PI * 2);
+        ctx.arc(px, py, Math.max(0.5, p.size * scale), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
@@ -551,6 +573,7 @@
     }
 
     function drawGreeting(centerX, centerY, heartScale, visible, retreatBuild) {
+      // Lời chúc mờ dần sau lần chạm đầu tiên cùng lúc trái tim thu nhỏ.
       const fade = visible * (1 - ease(retreatBuild));
       if (fade <= 0.001) return;
 
@@ -636,20 +659,18 @@
         ? 0
         : Math.max(0, Math.min(1, (time - transitionStartTime) / 2000));
       const heartZoom = 2.2 - 1.2 * ease(retreatBuild);
-      // Quả cầu và vành đai bắt đầu hiện sau khi trái tim đã thu nhỏ xong.
-      const ringBuild = transitionStartTime !== null && retreatBuild >= 1
-        ? Math.max(0, Math.min(1, (time - transitionStartTime - 2000) / 1800))
-        : 0;
+      // Cho quả cầu và vành đai mờ dần vào ở cuối lúc tim thu nhỏ, tránh xuất hiện đột ngột.
+      const ringBuild = transitionStartTime === null
+        ? 0
+        : Math.max(0, Math.min(1, (time - transitionStartTime - 1650) / 2600));
       const ringVisible = ease(ringBuild);
       // Hạt trung tâm hội tụ dần từ vị trí xuất phát về đúng hình trái tim
       const formBuild = Math.min(1, (time - animationStartTime) / 2600);
 
-      // Tính tốc độ theo thời gian thực để vòng quay không phụ thuộc tốc độ khung hình.
-      if (dragPointer && time - dragPointer.startTime > 250) {
-        sphereSpinAngle += 0.36 * elapsedSeconds;
-        dragPointer.moved = true;
-      }
-      // Xoay tự động nhẹ theo thời gian thực khi người dùng không tương tác.
+      // Quả cầu tự xoay chậm, không cần giữ hay kéo màn hình.
+      sphereSpinAngle += 0.08 * elapsedSeconds;
+      sphereZoom += (targetSphereZoom - sphereZoom) * (1 - Math.exp(-8 * elapsedSeconds));
+      // Xoay góc nhìn nhẹ khi người dùng không tương tác.
       if (!dragPointer && time - lastInteractionTime > 2500) {
         targetCameraYaw += 0.00028 * frameScale;
       }
@@ -668,7 +689,8 @@
       // Giữ toàn bộ cảnh nhỏ ngay từ đầu để tạo cảm giác đang ở xa.
       const zoomOut = 1;
       const scale = Math.min(width, height) * (width <= 600 ? 0.038 : 0.0135) * 0.5 * 0.45;
-      const sphereScale = scale * 1.2 * 1.3;
+      const zoomedScale = scale * sphereZoom;
+      const sphereScale = zoomedScale * 1.2 * 1.3;
       // Nhịp đập chỉ tác động lên trái tim ở giữa, không ảnh hưởng quả cầu/vành đai.
       const heartScale = scale * 1.18 * 1.2 * 0.88 * pulse * heartZoom;
       const pulseExtra = (pulse - 1) * 0.6;
@@ -678,8 +700,8 @@
 
       if (ringVisible > 0) {
         drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, true);
-        drawRingPass(centerX, centerY, scale, ringVisible, time, true, outerRingParticles);
-        drawRingPass(centerX, centerY, scale, ringVisible, time, true);
+        drawRingPass(centerX, centerY, zoomedScale, ringVisible, time, true, outerRingParticles);
+        drawRingPass(centerX, centerY, zoomedScale, ringVisible, time, true);
       }
 
       ctx.globalCompositeOperation = "lighter";
@@ -704,19 +726,20 @@
         ctx.globalAlpha = Math.min(1, (particle.opacity + sparkle + twinkle * 0.22) * visible);
         ctx.fillStyle = particle.color;
         ctx.beginPath();
-        ctx.arc(centerX + offsetX, centerY + offsetY, particle.radius * heartScale * (1 + twinkle * 0.55), 0, Math.PI * 2);
+        // Giữ hạt có kích thước tối thiểu để hình tim vẫn sáng rõ khi thu nhỏ.
+        ctx.arc(centerX + offsetX, centerY + offsetY, Math.max(0.62, particle.radius * heartScale * (1 + twinkle * 0.55)), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
 
-      drawGreeting(centerX, centerY, heartScale, visible, retreatBuild);
-
       if (ringVisible > 0) {
-        drawRingPass(centerX, centerY, scale, ringVisible, time, false);
-        drawRingPass(centerX, centerY, scale, ringVisible, time, false, outerRingParticles);
+        drawRingPass(centerX, centerY, zoomedScale, ringVisible, time, false);
+        drawRingPass(centerX, centerY, zoomedScale, ringVisible, time, false, outerRingParticles);
         drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, false);
       }
 
+      // Vẽ lời chúc sau quả cầu để chữ luôn rõ và không bị các họa tiết che mất.
+      drawGreeting(centerX, centerY, heartScale, visible, retreatBuild);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
     }
@@ -724,6 +747,13 @@
     canvas.style.touchAction = "none";
     canvas.addEventListener("pointerdown", (event) => {
       lastInteractionTime = performance.now();
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activePointers.size === 2) {
+        const points = [...activePointers.values()];
+        pinchStartDistance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+        pinchStartZoom = targetSphereZoom;
+        wasPinching = true;
+      }
       dragPointer = {
         id: event.pointerId,
         x: event.clientX,
@@ -731,11 +761,24 @@
         startX: event.clientX,
         startY: event.clientY,
         startTime: performance.now(),
-        moved: false
+        moved: wasPinching
       };
       canvas.setPointerCapture(event.pointerId);
     });
     canvas.addEventListener("pointermove", (event) => {
+      if (activePointers.has(event.pointerId)) {
+        activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      }
+      if (activePointers.size >= 2) {
+        const points = [...activePointers.values()];
+        const distance = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+        if (pinchStartDistance > 0) {
+          targetSphereZoom = Math.max(0.65, Math.min(1.8, pinchStartZoom * distance / pinchStartDistance));
+        }
+        if (dragPointer) dragPointer.moved = true;
+        lastInteractionTime = performance.now();
+        return;
+      }
       if (!dragPointer || dragPointer.id !== event.pointerId) return;
       lastInteractionTime = performance.now();
       const dx = event.clientX - dragPointer.x;
@@ -749,8 +792,17 @@
       dragPointer.y = event.clientY;
     });
     canvas.addEventListener("pointerup", (event) => {
-      if (!dragPointer || dragPointer.id !== event.pointerId) return;
+      activePointers.delete(event.pointerId);
       lastInteractionTime = performance.now();
+      if (wasPinching) {
+        dragPointer = null;
+        if (activePointers.size === 0) {
+          wasPinching = false;
+          pinchStartDistance = 0;
+        }
+        return;
+      }
+      if (!dragPointer || dragPointer.id !== event.pointerId) return;
       if (performance.now() - dragPointer.startTime > 250) dragPointer.moved = true;
       if (!dragPointer.moved) {
         if (transitionStartTime === null) {
@@ -770,7 +822,16 @@
       }
       dragPointer = null;
     });
-    canvas.addEventListener("pointercancel", () => { dragPointer = null; });
+    canvas.addEventListener("pointercancel", (event) => {
+      activePointers.delete(event.pointerId);
+      dragPointer = null;
+      if (activePointers.size === 0) wasPinching = false;
+    });
+    canvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      targetSphereZoom = Math.max(0.65, Math.min(1.8, targetSphereZoom * Math.exp(-event.deltaY * 0.001)));
+      lastInteractionTime = performance.now();
+    }, { passive: false });
     document.getElementById("wishClose").addEventListener("click", closeWish);
     wishModal.addEventListener("click", (event) => {
       if (event.target === wishModal) closeWish();
