@@ -94,9 +94,9 @@
     }, { once: true });
     const particles = [];
 
-    const PARTICLE_COUNT = 6000;
-    const RING_COUNT = 2400;
-    const OUTER_RING_COUNT = 1400;
+    const PARTICLE_COUNT = 8500;
+    const RING_COUNT = 3400;
+    const OUTER_RING_COUNT = 2000;
     const STAR_COUNT = 450;
     const FRAME_INTERVAL = 1000 / 60;
     let lastFrameTime = 0;
@@ -228,8 +228,8 @@
 
     }
 
-    // Bảng màu gốc, giữ cố định (không đổi màu theo thời gian nữa)
-    const PALETTE = { center: [228, 220, 255], edge: [104, 70, 245] };
+    // Tông tím lavender giữ sắc tím rõ nét khi các hạt cộng sáng.
+    const PALETTE = { center: [208, 178, 255], edge: [112, 72, 220] };
 
     function heart(t) {
       return {
@@ -274,8 +274,8 @@
           startY: Math.sin(startAngle) * startDist,
           depthMix: point.depth,
           color: mixColor(point.depth),
-          radius: 0.024 + point.depth * 0.058,
-          opacity: 0.5 + point.depth * 0.5,
+          radius: 0.03 + point.depth * 0.065,
+          opacity: 0.65 + point.depth * 0.35,
           phase: Math.random() * Math.PI * 2,
           speed: 0.006 + Math.random() * 0.01,
           arrive: 0.4 + Math.random() * 0.6 // thời điểm (0..1 của formBuild) hạt này "đến nơi"
@@ -307,8 +307,8 @@
         ringParticles.push({
           angle0: Math.random() * Math.PI * 2,
           radius,
-          size: 0.075 + Math.random() * 0.1,
-          opacity: (0.8 + Math.random() * 0.2) * edgeFade,
+          size: 0.09 + Math.random() * 0.12,
+          opacity: (0.95 + Math.random() * 0.05) * edgeFade,
           color: mixColor(Math.random())
         });
       }
@@ -320,8 +320,8 @@
         outerRingParticles.push({
           angle0: Math.random() * Math.PI * 2,
           radius: 42 + outward * 4,
-          size: 0.02 + outward * 0.055,
-          opacity: 0.35 + outward * 0.5,
+          size: 0.03 + outward * 0.07,
+          opacity: 0.55 + outward * 0.45,
           color: mixColor(Math.random())
         });
       }
@@ -488,6 +488,8 @@
       const cosT = Math.cos(RING_TILT);
       const sinT = Math.sin(RING_TILT);
       const rotation = time * 0.00035;
+      // Cộng ánh sáng giữa các hạt để chúng rực hơn mà vẫn giữ kích thước nét.
+      ctx.globalCompositeOperation = "lighter";
 
       for (const p of particlesToDraw) {
         const angle = p.angle0 + rotation;
@@ -510,6 +512,68 @@
         ctx.arc(px, py, p.size * scale, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = 1;
+    }
+
+    function drawGreeting(centerX, centerY, heartScale, visible, retreatBuild) {
+      const fade = visible * (1 - ease(retreatBuild));
+      if (fade <= 0.001) return;
+
+      const fontSize = Math.min(52, Math.max(24, width * 0.085));
+      // Nâng lời chúc lên cao hơn để tách rõ khỏi đỉnh trái tim.
+      const textY = centerY - heartScale * 20 - fontSize * 1.3;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `italic 700 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+
+      const textWidth = ctx.measureText("Happy 20-10").width;
+      const ornamentY = textY - fontSize * 0.68;
+      ctx.shadowColor = "#8c6cff";
+      ctx.shadowBlur = fontSize * 0.3;
+      ctx.strokeStyle = "rgba(202, 190, 255, 0.82)";
+      ctx.lineWidth = Math.max(1, fontSize * 0.025);
+      ctx.beginPath();
+      ctx.moveTo(centerX - textWidth * 0.34, ornamentY);
+      ctx.quadraticCurveTo(centerX, ornamentY - fontSize * 0.22, centerX + textWidth * 0.34, ornamentY);
+      ctx.stroke();
+      ctx.fillStyle = "#e4dcff";
+      ctx.font = `${fontSize * 0.28}px Arial, sans-serif`;
+      ctx.fillText("✦", centerX, ornamentY - fontSize * 0.08);
+      ctx.fillText("❧", centerX - textWidth * 0.4, ornamentY + fontSize * 0.02);
+      ctx.fillText("❧", centerX + textWidth * 0.4, ornamentY + fontSize * 0.02);
+
+      ctx.font = `italic 700 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+      ctx.shadowColor = "#6846f5";
+      ctx.shadowBlur = fontSize * 0.72;
+      const lettering = ctx.createLinearGradient(centerX - textWidth * 0.55, textY, centerX + textWidth * 0.55, textY);
+      lettering.addColorStop(0, "#a994ff");
+      lettering.addColorStop(0.48, "#f5f1ff");
+      lettering.addColorStop(1, "#6846f5");
+      ctx.fillStyle = lettering;
+      ctx.fillText("Happy 20-10", centerX, textY);
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = Math.max(1, fontSize * 0.018);
+      ctx.strokeStyle = "rgba(228, 220, 255, 0.9)";
+      ctx.strokeText("Happy 20-10", centerX, textY);
+
+      const flourishY = textY + fontSize * 0.62;
+      ctx.shadowColor = "#8061f5";
+      ctx.shadowBlur = fontSize * 0.3;
+      ctx.strokeStyle = "rgba(180, 164, 255, 0.92)";
+      ctx.lineWidth = Math.max(1, fontSize * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(centerX - textWidth * 0.43, flourishY);
+      ctx.quadraticCurveTo(centerX - textWidth * 0.18, flourishY + fontSize * 0.19, centerX, flourishY + fontSize * 0.08);
+      ctx.quadraticCurveTo(centerX + textWidth * 0.18, flourishY + fontSize * 0.19, centerX + textWidth * 0.43, flourishY);
+      ctx.stroke();
+      ctx.fillStyle = "#d8cfff";
+      ctx.font = `${fontSize * 0.28}px Arial, sans-serif`;
+      ctx.fillText("✧", centerX - textWidth * 0.51, textY);
+      ctx.fillText("✧", centerX + textWidth * 0.51, textY);
+      ctx.restore();
     }
 
     function resize() {
@@ -565,15 +629,17 @@
       const heartScale = scale * 1.18 * 1.2 * 0.88 * pulse * heartZoom;
       const pulseExtra = (pulse - 1) * 0.6;
 
-      ctx.globalCompositeOperation = "lighter";
+      // Nền và họa tiết giữ màu bình thường; riêng các hạt dùng cộng sáng để phát quang rõ hơn.
+      ctx.globalCompositeOperation = "source-over";
 
       drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, true);
       drawRingPass(centerX, centerY, scale, ringVisible, time, true, outerRingParticles);
       drawRingPass(centerX, centerY, scale, ringVisible, time, true);
 
+      ctx.globalCompositeOperation = "lighter";
       for (const particle of particles) {
         particle.phase += particle.speed * frameScale;
-        const sparkle = (Math.sin(particle.phase * 1.7 + time * 0.004) + 1) * 0.12;
+        const sparkle = (Math.sin(particle.phase * 1.7 + time * 0.004) + 1) * 0.18;
         const twinkle = Math.max(0, Math.sin(particle.phase * 2.3 + time * 0.008));
         const chaosX = Math.sin(time * 0.0022 + particle.phase * 3.1) * (0.7 + particle.radius * 8);
         const chaosY = Math.cos(time * 0.0018 + particle.phase * 2.4) * (0.7 + particle.radius * 8);
@@ -589,12 +655,15 @@
         const offsetX = (x + x * pulseExtra) * heartScale + chaosX * zoomOut;
         const offsetY = (y + y * pulseExtra) * heartScale + chaosY * zoomOut;
 
-        ctx.globalAlpha = Math.min(1, (particle.opacity * 0.92 + sparkle + twinkle * 0.16) * visible);
+        ctx.globalAlpha = Math.min(1, (particle.opacity + sparkle + twinkle * 0.22) * visible);
         ctx.fillStyle = particle.color;
         ctx.beginPath();
         ctx.arc(centerX + offsetX, centerY + offsetY, particle.radius * heartScale * (1 + twinkle * 0.55), 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.globalCompositeOperation = "source-over";
+
+      drawGreeting(centerX, centerY, heartScale, visible, retreatBuild);
 
       drawRingPass(centerX, centerY, scale, ringVisible, time, false);
       drawRingPass(centerX, centerY, scale, ringVisible, time, false, outerRingParticles);
