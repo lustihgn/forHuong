@@ -121,6 +121,8 @@
     let transitionStartTime = null;
     let cameraYaw = 0;
     let cameraPitch = 0;
+    let targetCameraYaw = 0;
+    let targetCameraPitch = 0;
     let sphereSpinAngle = 0;
     let dragPointer = null;
     let lastInteractionTime = 0;   // thời điểm tương tác gần nhất, để bật auto-rotate khi rảnh
@@ -344,8 +346,9 @@
         const angle = i * goldenAngle;
         const radius = SPHERE_RADIUS * (0.94 + Math.random() * 0.12);
         const isWish = i % 6 === 0;
-        const butterfly = !isWish && i % 8 === 2;
-        const sparkle = !isWish && i % 8 === 4;
+        const butterfly = !isWish && i % 18 === 2;
+        const sparkle = !isWish && i % 18 === 8;
+        const heart = !isWish && i % 18 === 14;
         sphereDecorations.push({
           x: Math.cos(angle) * ringRadius * radius,
           y: y * radius,
@@ -353,6 +356,7 @@
           wish: isWish ? sphereWishes[(i / 6) % sphereWishes.length] : null,
           butterfly,
           sparkle,
+          heart,
           phase: Math.random() * Math.PI * 2,
           opacity: 0.72 + Math.random() * 0.28
         });
@@ -499,11 +503,11 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText("✦", point.x, point.y);
-        } else {
-          const size = Math.max(9, Math.min(15, scale * 1.6)) * sizePerspective;
+        } else if (item.heart) {
+          const size = Math.max(8, Math.min(12, scale * 1.3)) * sizePerspective;
           ctx.fillStyle = "#ff9bd8";
           ctx.shadowColor = "#ff42b0";
-          ctx.shadowBlur = size * (1.1 + Math.max(0, point.frontness) * 0.9);
+          ctx.shadowBlur = size * 0.9;
           ctx.font = `bold ${size}px Arial, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -625,8 +629,6 @@
       if (animationStartTime === null) animationStartTime = time;
       ctx.clearRect(0, 0, width, height);
 
-      drawSpaceBackground(time);
-
       build = Math.min(1, build + 0.009 * frameScale);
       const visible = ease(build);
       // Chỉ thu nhỏ trái tim và hiện quả cầu sau lần chạm/nhấp đầu tiên.
@@ -647,10 +649,15 @@
         sphereSpinAngle += 0.36 * elapsedSeconds;
         dragPointer.moved = true;
       }
-      // Auto-rotate nhẹ khi người dùng không tương tác trong 2.5s
+      // Xoay tự động nhẹ theo thời gian thực khi người dùng không tương tác.
       if (!dragPointer && time - lastInteractionTime > 2500) {
-        cameraYaw += 0.00028;
+        targetCameraYaw += 0.00028 * frameScale;
       }
+      // Nội suy góc để chuyển động kéo và xoay tự động không bị khựng giữa các khung hình.
+      const rotationEase = 1 - Math.exp(-12 * elapsedSeconds);
+      cameraYaw += (targetCameraYaw - cameraYaw) * rotationEase;
+      cameraPitch += (targetCameraPitch - cameraPitch) * rotationEase;
+      drawSpaceBackground(time);
 
       const centerX = width / 2;
       const centerY = height / 2 - height * 0.05;
@@ -661,7 +668,7 @@
       // Giữ toàn bộ cảnh nhỏ ngay từ đầu để tạo cảm giác đang ở xa.
       const zoomOut = 1;
       const scale = Math.min(width, height) * (width <= 600 ? 0.038 : 0.0135) * 0.5 * 0.45;
-      const sphereScale = scale * 1.2;
+      const sphereScale = scale * 1.2 * 1.3;
       // Nhịp đập chỉ tác động lên trái tim ở giữa, không ảnh hưởng quả cầu/vành đai.
       const heartScale = scale * 1.18 * 1.2 * 0.88 * pulse * heartZoom;
       const pulseExtra = (pulse - 1) * 0.6;
@@ -669,9 +676,11 @@
       // Nền và họa tiết giữ màu bình thường; riêng các hạt dùng cộng sáng để phát quang rõ hơn.
       ctx.globalCompositeOperation = "source-over";
 
-      drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, true);
-      drawRingPass(centerX, centerY, scale, ringVisible, time, true, outerRingParticles);
-      drawRingPass(centerX, centerY, scale, ringVisible, time, true);
+      if (ringVisible > 0) {
+        drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, true);
+        drawRingPass(centerX, centerY, scale, ringVisible, time, true, outerRingParticles);
+        drawRingPass(centerX, centerY, scale, ringVisible, time, true);
+      }
 
       ctx.globalCompositeOperation = "lighter";
       for (const particle of particles) {
@@ -702,9 +711,11 @@
 
       drawGreeting(centerX, centerY, heartScale, visible, retreatBuild);
 
-      drawRingPass(centerX, centerY, scale, ringVisible, time, false);
-      drawRingPass(centerX, centerY, scale, ringVisible, time, false, outerRingParticles);
-      drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, false);
+      if (ringVisible > 0) {
+        drawRingPass(centerX, centerY, scale, ringVisible, time, false);
+        drawRingPass(centerX, centerY, scale, ringVisible, time, false, outerRingParticles);
+        drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, false);
+      }
 
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
@@ -732,8 +743,8 @@
       if (Math.hypot(event.clientX - dragPointer.startX, event.clientY - dragPointer.startY) > 8) {
         dragPointer.moved = true;
       }
-      cameraYaw += dx * 0.006;
-      cameraPitch = Math.max(-1.1, Math.min(1.1, cameraPitch + dy * 0.006));
+      targetCameraYaw += dx * 0.006;
+      targetCameraPitch = Math.max(-1.1, Math.min(1.1, targetCameraPitch + dy * 0.006));
       dragPointer.x = event.clientX;
       dragPointer.y = event.clientY;
     });
