@@ -94,10 +94,11 @@
     }, { once: true });
     const particles = [];
 
-    const PARTICLE_COUNT = 8500;
-    const RING_COUNT = 3400;
-    const OUTER_RING_COUNT = 2000;
-    const STAR_COUNT = 450;
+    // Giảm số lượng hạt vẽ mỗi khung hình để chuyển động ổn định hơn trên điện thoại.
+    const PARTICLE_COUNT = 4800;
+    const RING_COUNT = 1900;
+    const OUTER_RING_COUNT = 900;
+    const STAR_COUNT = 350;
     const FRAME_INTERVAL = 1000 / 60;
     let lastFrameTime = 0;
 
@@ -120,6 +121,7 @@
     let transitionStartTime = null;
     let cameraYaw = 0;
     let cameraPitch = 0;
+    let sphereSpinAngle = 0;
     let dragPointer = null;
     let lastInteractionTime = 0;   // thời điểm tương tác gần nhất, để bật auto-rotate khi rảnh
     const wishHitTargets = [];
@@ -291,7 +293,12 @@
       "May mắn mỗi ngày", "Mãi bên nhau", "Tràn đầy niềm vui", "Yêu bạn nhiều",
       "Mọi điều như ý", "Ngọt ngào nhé", "Thật nhiều yêu thương", "Hạnh phúc dài lâu",
       "Luôn rạng rỡ", "Ước mơ thành hiện thực", "Ấm áp mỗi ngày", "Thương thật nhiều",
-      "Một đời bình yên", "Niềm vui bất tận", "Luôn được chở che", "Mãi lung linh"
+      "Một đời bình yên", "Niềm vui bất tận", "Luôn được chở che", "Mãi lung linh",
+      "Ngày mới thật vui", "Luôn gặp điều tốt lành", "Tự tin tỏa sáng", "Bình yên trong tim",
+      "Mong bạn luôn được yêu", "Nụ cười luôn nở", "Ước mơ bay cao", "Hạnh phúc quanh đây",
+      "Tỏa sáng theo cách riêng", "Thành công rực rỡ", "Mỗi ngày một niềm vui", "Luôn vững tin nhé",
+      "Thật nhiều may mắn", "Yêu đời và an yên", "Mong điều lành ghé thăm", "Rạng rỡ mỗi ngày",
+      "Luôn có người bên cạnh", "Trái tim ngập nắng", "Vạn điều như ý", "Hạnh phúc nhé bạn"
     ];
     const SPHERE_RADIUS = 72;
     const RING_TILT = 0;
@@ -329,20 +336,23 @@
 
     function createSphereDecorations() {
       sphereDecorations.length = 0;
-      const count = 80;
+      const count = 240;
       const goldenAngle = Math.PI * (3 - Math.sqrt(5));
       for (let i = 0; i < count; i++) {
         const y = 1 - 2 * (i + 0.5) / count;
         const ringRadius = Math.sqrt(1 - y * y);
         const angle = i * goldenAngle;
         const radius = SPHERE_RADIUS * (0.94 + Math.random() * 0.12);
-        const isWish = i % 4 === 0;
+        const isWish = i % 6 === 0;
+        const butterfly = !isWish && i % 8 === 2;
+        const sparkle = !isWish && i % 8 === 4;
         sphereDecorations.push({
           x: Math.cos(angle) * ringRadius * radius,
           y: y * radius,
           z: Math.sin(angle) * ringRadius * radius,
-          wish: isWish ? sphereWishes[(i / 4) % sphereWishes.length] : null,
-          butterfly: !isWish && i % 4 === 2,
+          wish: isWish ? sphereWishes[(i / 6) % sphereWishes.length] : null,
+          butterfly,
+          sparkle,
           phase: Math.random() * Math.PI * 2,
           opacity: 0.72 + Math.random() * 0.28
         });
@@ -417,14 +427,23 @@
       const upY = cosPitch;
       const upZ = -cosYaw * sinPitch;
 
+      const spinCos = Math.cos(sphereSpinAngle);
+      const spinSin = Math.sin(sphereSpinAngle);
+      // Trục này đưa chữ ở mặt trước chéo lên phía trên bên trái màn hình.
+      const axisX = 0.65, axisY = -0.65, axisZ = 0.39;
       for (const item of sphereDecorations) {
-        const frontness = (item.x * viewX + item.y * viewY + item.z * viewZ) / SPHERE_RADIUS;
+        // Quay cả bề mặt theo một trục chéo để các chữ lần lượt đi qua mặt trước.
+        const dot = item.x * axisX + item.y * axisY + item.z * axisZ;
+        const spunX = item.x * spinCos + (axisY * item.z - axisZ * item.y) * spinSin + axisX * dot * (1 - spinCos);
+        const spunY = item.y * spinCos + (axisZ * item.x - axisX * item.z) * spinSin + axisY * dot * (1 - spinCos);
+        const spunZ = item.z * spinCos + (axisX * item.y - axisY * item.x) * spinSin + axisZ * dot * (1 - spinCos);
+        const frontness = (spunX * viewX + spunY * viewY + spunZ * viewZ) / SPHERE_RADIUS;
         const isBack = frontness < 0;
         if (isBack !== backPass) continue;
 
-        const cameraX = item.x * rightX + item.z * rightZ;
-        const cameraY = item.x * upX + item.y * upY + item.z * upZ;
-        const depth = cameraDistance - (item.x * viewX + item.y * viewY + item.z * viewZ);
+        const cameraX = spunX * rightX + spunZ * rightZ;
+        const cameraY = spunX * upX + spunY * upY + spunZ * upZ;
+        const depth = cameraDistance - (spunX * viewX + spunY * viewY + spunZ * viewZ);
         const perspective = cameraDistance / depth;
         projected.push({
           item,
@@ -464,16 +483,27 @@
           ctx.shadowBlur = (5 + point.frontness * 7) * sizePerspective;
           ctx.fillText(item.wish, point.x, point.y);
         } else if (item.butterfly) {
-          const size = Math.max(7, Math.min(10, scale * 1.1)) * sizePerspective * 0.35;
-          ctx.shadowColor = "#c78aff";
-          ctx.shadowBlur = size * (0.7 + Math.max(0, point.frontness) * 0.5);
+          const size = Math.max(9, Math.min(13, scale * 1.5)) * sizePerspective * 0.65;
+          ctx.shadowColor = "#e18bff";
+          ctx.shadowBlur = size * (1.2 + Math.max(0, point.frontness) * 0.9);
           drawButterfly(point.x, point.y, size, time, item.phase);
           ctx.shadowBlur = 0;
+        } else if (item.sparkle) {
+          const size = Math.max(10, Math.min(15, scale * 1.6)) * sizePerspective;
+          const shimmer = 0.78 + (Math.sin(time * 0.003 + item.phase) + 1) * 0.11;
+          ctx.globalAlpha *= shimmer;
+          ctx.fillStyle = "#fff0ff";
+          ctx.shadowColor = "#c69aff";
+          ctx.shadowBlur = size * (1.3 + Math.max(0, point.frontness) * 1.1);
+          ctx.font = `bold ${size}px Georgia, serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("✦", point.x, point.y);
         } else {
-          const size = Math.max(7, Math.min(12, scale * 1.3)) * sizePerspective;
-          ctx.fillStyle = "#ff72c6";
+          const size = Math.max(9, Math.min(15, scale * 1.6)) * sizePerspective;
+          ctx.fillStyle = "#ff9bd8";
           ctx.shadowColor = "#ff42b0";
-          ctx.shadowBlur = size * (0.55 + Math.max(0, point.frontness) * 0.55);
+          ctx.shadowBlur = size * (1.1 + Math.max(0, point.frontness) * 0.9);
           ctx.font = `bold ${size}px Arial, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -588,7 +618,9 @@
     function draw(time) {
       requestAnimationFrame(draw);
       if (time - lastFrameTime < FRAME_INTERVAL) return;
-      const frameScale = Math.min(2, (time - lastFrameTime) / (1000 / 60));
+      const elapsedMs = Math.max(0, time - lastFrameTime);
+      const elapsedSeconds = Math.min(0.05, elapsedMs / 1000);
+      const frameScale = Math.min(2, elapsedMs / (1000 / 60));
       lastFrameTime = time;
       if (animationStartTime === null) animationStartTime = time;
       ctx.clearRect(0, 0, width, height);
@@ -610,6 +642,11 @@
       // Hạt trung tâm hội tụ dần từ vị trí xuất phát về đúng hình trái tim
       const formBuild = Math.min(1, (time - animationStartTime) / 2600);
 
+      // Tính tốc độ theo thời gian thực để vòng quay không phụ thuộc tốc độ khung hình.
+      if (dragPointer && time - dragPointer.startTime > 250) {
+        sphereSpinAngle += 0.36 * elapsedSeconds;
+        dragPointer.moved = true;
+      }
       // Auto-rotate nhẹ khi người dùng không tương tác trong 2.5s
       if (!dragPointer && time - lastInteractionTime > 2500) {
         cameraYaw += 0.00028;
@@ -682,6 +719,7 @@
         y: event.clientY,
         startX: event.clientX,
         startY: event.clientY,
+        startTime: performance.now(),
         moved: false
       };
       canvas.setPointerCapture(event.pointerId);
@@ -702,6 +740,7 @@
     canvas.addEventListener("pointerup", (event) => {
       if (!dragPointer || dragPointer.id !== event.pointerId) return;
       lastInteractionTime = performance.now();
+      if (performance.now() - dragPointer.startTime > 250) dragPointer.moved = true;
       if (!dragPointer.moved) {
         if (transitionStartTime === null) {
           transitionStartTime = performance.now();
