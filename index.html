@@ -572,26 +572,26 @@
       ctx.globalAlpha = 1;
     }
 
-    function drawGreeting(centerX, centerY, heartScale, visible, retreatBuild) {
-      // Lời chúc mờ dần sau lần chạm đầu tiên cùng lúc trái tim thu nhỏ.
-      const fade = visible * (1 - ease(retreatBuild));
+    function drawGreeting(centerX, centerY, heartScale, visible, retreatBuild, greetingBuild) {
+      // Lời chúc chỉ hiện sau khi trái tim tạo hình xong, rồi mờ dần khi trái tim thu nhỏ.
+      const fade = visible * greetingBuild * (1 - ease(retreatBuild));
       if (fade <= 0.001) return;
 
       const fontSize = Math.min(52, Math.max(24, width * 0.085));
-      // Nâng lời chúc lên cao hơn để tách rõ khỏi đỉnh trái tim.
-      const textY = centerY - heartScale * 20 - fontSize * 1.3;
+      // Đặt lời chúc cao hơn để tách rõ khỏi đỉnh trái tim.
+      const textY = centerY - heartScale * 20 - fontSize * 1.6;
       ctx.save();
       ctx.globalAlpha = fade;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `italic 700 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+      ctx.font = `italic 600 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
 
       const textWidth = ctx.measureText("Happy 20-10").width;
       const ornamentY = textY - fontSize * 0.68;
       ctx.shadowColor = "#8c6cff";
       ctx.shadowBlur = fontSize * 0.3;
       ctx.strokeStyle = "rgba(202, 190, 255, 0.82)";
-      ctx.lineWidth = Math.max(1, fontSize * 0.025);
+      ctx.lineWidth = Math.max(0.8, fontSize * 0.018);
       ctx.beginPath();
       ctx.moveTo(centerX - textWidth * 0.34, ornamentY);
       ctx.quadraticCurveTo(centerX, ornamentY - fontSize * 0.22, centerX + textWidth * 0.34, ornamentY);
@@ -602,7 +602,7 @@
       ctx.fillText("❧", centerX - textWidth * 0.4, ornamentY + fontSize * 0.02);
       ctx.fillText("❧", centerX + textWidth * 0.4, ornamentY + fontSize * 0.02);
 
-      ctx.font = `italic 700 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+      ctx.font = `italic 600 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
       ctx.shadowColor = "#6846f5";
       ctx.shadowBlur = fontSize * 0.72;
       const lettering = ctx.createLinearGradient(centerX - textWidth * 0.55, textY, centerX + textWidth * 0.55, textY);
@@ -612,7 +612,7 @@
       ctx.fillStyle = lettering;
       ctx.fillText("Happy 20-10", centerX, textY);
       ctx.shadowBlur = 0;
-      ctx.lineWidth = Math.max(1, fontSize * 0.018);
+      ctx.lineWidth = Math.max(0.7, fontSize * 0.012);
       ctx.strokeStyle = "rgba(228, 220, 255, 0.9)";
       ctx.strokeText("Happy 20-10", centerX, textY);
 
@@ -620,7 +620,7 @@
       ctx.shadowColor = "#8061f5";
       ctx.shadowBlur = fontSize * 0.3;
       ctx.strokeStyle = "rgba(180, 164, 255, 0.92)";
-      ctx.lineWidth = Math.max(1, fontSize * 0.035);
+      ctx.lineWidth = Math.max(0.8, fontSize * 0.025);
       ctx.beginPath();
       ctx.moveTo(centerX - textWidth * 0.43, flourishY);
       ctx.quadraticCurveTo(centerX - textWidth * 0.18, flourishY + fontSize * 0.19, centerX, flourishY + fontSize * 0.08);
@@ -666,6 +666,8 @@
       const ringVisible = ease(ringBuild);
       // Hạt trung tâm hội tụ dần từ vị trí xuất phát về đúng hình trái tim
       const formBuild = Math.min(1, (time - animationStartTime) / 2600);
+      // Bắt đầu hiện lời chúc sau khi trái tim đã tạo hình xong.
+      const greetingBuild = ease(Math.max(0, Math.min(1, (time - animationStartTime - 2600) / 700)));
 
       // Quả cầu tự xoay chậm, không cần giữ hay kéo màn hình.
       sphereSpinAngle += 0.08 * elapsedSeconds;
@@ -739,7 +741,7 @@
       }
 
       // Vẽ lời chúc sau quả cầu để chữ luôn rõ và không bị các họa tiết che mất.
-      drawGreeting(centerX, centerY, heartScale, visible, retreatBuild);
+      drawGreeting(centerX, centerY, heartScale, visible, retreatBuild, greetingBuild);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
     }
