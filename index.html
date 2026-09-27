@@ -101,6 +101,11 @@
     const STAR_COUNT = 350;
     const FRAME_INTERVAL = 1000 / 60;
     let lastFrameTime = 0;
+    // Bộ tích lũy thời gian dùng cho vòng lặp "fixed timestep": đảm bảo mỗi bước cập nhật
+    // luôn có cùng độ dài (~16.7ms), bất kể màn hình thực tế quét ở 60Hz, 90Hz hay 120Hz.
+    // Nhờ vậy chuyển động mượt và giống nhau trên mọi thiết bị/trình duyệt, kể cả khi
+    // chạy file HTML này độc lập thay vì trong trình xem trước.
+    let frameAccumulator = 0;
 
     const stars = Array.from({ length: STAR_COUNT }, () => ({
       x: (Math.random() - 0.5) * 4.8,
@@ -134,6 +139,24 @@
     let lastInteractionTime = 0;   // thời điểm tương tác gần nhất, để bật auto-rotate khi rảnh
     const wishHitTargets = [];
     const wishModal = document.getElementById("wishModal");
+
+    // --- Chất lượng tự động (adaptive quality) ---
+    // Đo FPS thực tế và tự giảm số lượng hạt / tắt shadowBlur nếu máy đuối,
+    // thay vì để hoạt ảnh giật liên tục suốt phiên.
+    let qualityTier = 2; // 2 = cao, 1 = trung bình, 0 = thấp
+    const QUALITY_STEPS = [
+      { particle: 0.35, ring: 0.4, outer: 0.4, decor: 0.5, shadow: false }, // tier 0 - thấp
+      { particle: 0.6, ring: 0.6, outer: 0.6, decor: 0.75, shadow: true },  // tier 1 - trung bình
+      { particle: 1, ring: 1, outer: 1, decor: 1, shadow: true }            // tier 2 - cao
+    ];
+    let shadowEnabled = true;
+    let particleCount = PARTICLE_COUNT;
+    let ringCount = RING_COUNT;
+    let outerRingCount = OUTER_RING_COUNT;
+    let decorCount = 240;
+    let fpsAccumTime = 0;
+    let fpsAccumFrames = 0;
+    let lastQualityCheck = 0;
     const extraWishes = [
       "Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.",
       "Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.",
@@ -284,18 +307,20 @@
       }
     }
 
-    function createParticles() {
+    function createParticles(count = PARTICLE_COUNT, instant = false) {
       particles.length = 0;
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
+      for (let i = 0; i < count; i++) {
         const point = sampleHeartPoint();
-        // Vị trí bắt đầu ngẫu nhiên ngoài rìa để bay hội tụ vào hình tim lúc mở trang
+        // Vị trí bắt đầu ngẫu nhiên ngoài rìa để bay hội tụ vào hình tim lúc mở trang.
+        // Khi dựng lại giữa chừng (hạ cấp chất lượng), đặt thẳng vào vị trí cuối
+        // (instant=true) để không bị "bay vào" lại gây giật mắt.
         const startAngle = Math.random() * Math.PI * 2;
         const startDist = 60 + Math.random() * 40;
         particles.push({
           x: point.x,
           y: point.y,
-          startX: Math.cos(startAngle) * startDist,
-          startY: Math.sin(startAngle) * startDist,
+          startX: instant ? point.x : Math.cos(startAngle) * startDist,
+          startY: instant ? point.y : Math.sin(startAngle) * startDist,
           depthMix: point.depth,
           color: mixColor(point.depth),
           radius: 0.03 + point.depth * 0.065,
@@ -327,9 +352,9 @@
     const RING_SQUASH = 0.2;
     const RING_Y_OFFSET = 4;
 
-    function createRing() {
+    function createRing(count = RING_COUNT) {
       ringParticles.length = 0;
-      for (let i = 0; i < RING_COUNT; i++) {
+      for (let i = 0; i < count; i++) {
         const centerBiasT = Math.pow(Math.random(), 2.2);
         const radius = (18.282 + centerBiasT * 9.898) * 1.3;
         const edgeFade = 1 - centerBiasT;
@@ -343,8 +368,9 @@
       }
     }
 
-    function createOuterRing() {
-      for (let i = 0; i < OUTER_RING_COUNT; i++) {
+    function createOuterRing(count = OUTER_RING_COUNT) {
+      outerRingParticles.length = 0; // (trước đây thiếu dòng này — sẽ nhân đôi hạt nếu gọi lại)
+      for (let i = 0; i < count; i++) {
         const outward = Math.pow(Math.random(), 0.55);
         outerRingParticles.push({
           angle0: Math.random() * Math.PI * 2,
@@ -356,9 +382,8 @@
       }
     }
 
-    function createSphereDecorations() {
+    function createSphereDecorations(count = 240) {
       sphereDecorations.length = 0;
-      const count = 240;
       const goldenAngle = Math.PI * (3 - Math.sqrt(5));
       for (let i = 0; i < count; i++) {
         const y = 1 - 2 * (i + 0.5) / count;
@@ -436,6 +461,19 @@
       ctx.restore();
     }
 
+    // Xoay một điểm quanh trục chéo cố định của quả cầu, dùng chung cho việc vẽ.
+    function spinVector(x, y, z) {
+      const spinCos = Math.cos(sphereSpinAngle);
+      const spinSin = Math.sin(sphereSpinAngle);
+      const axisX = 0.65, axisY = -0.65, axisZ = 0.39;
+      const dot = x * axisX + y * axisY + z * axisZ;
+      return [
+        x * spinCos + (axisY * z - axisZ * y) * spinSin + axisX * dot * (1 - spinCos),
+        y * spinCos + (axisZ * x - axisX * z) * spinSin + axisY * dot * (1 - spinCos),
+        z * spinCos + (axisX * y - axisY * x) * spinSin + axisZ * dot * (1 - spinCos)
+      ];
+    }
+
     function drawSpherePass(centerX, centerY, scale, visible, time, backPass) {
       if (!backPass) wishHitTargets.length = 0;
       const cosYaw = Math.cos(cameraYaw), sinYaw = Math.sin(cameraYaw);
@@ -451,16 +489,10 @@
       const upY = cosPitch;
       const upZ = -cosYaw * sinPitch;
 
-      const spinCos = Math.cos(sphereSpinAngle);
-      const spinSin = Math.sin(sphereSpinAngle);
       // Trục này đưa chữ ở mặt trước chéo lên phía trên bên trái màn hình.
-      const axisX = 0.65, axisY = -0.65, axisZ = 0.39;
       for (const item of sphereDecorations) {
         // Quay cả bề mặt theo một trục chéo để các chữ lần lượt đi qua mặt trước.
-        const dot = item.x * axisX + item.y * axisY + item.z * axisZ;
-        const spunX = item.x * spinCos + (axisY * item.z - axisZ * item.y) * spinSin + axisX * dot * (1 - spinCos);
-        const spunY = item.y * spinCos + (axisZ * item.x - axisX * item.z) * spinSin + axisY * dot * (1 - spinCos);
-        const spunZ = item.z * spinCos + (axisX * item.y - axisY * item.x) * spinSin + axisZ * dot * (1 - spinCos);
+        const [spunX, spunY, spunZ] = spinVector(item.x, item.y, item.z);
         const frontness = (spunX * viewX + spunY * viewY + spunZ * viewZ) / SPHERE_RADIUS;
         const isBack = frontness < 0;
         if (isBack !== backPass) continue;
@@ -504,12 +536,12 @@
           ctx.textBaseline = "middle";
           ctx.fillStyle = "#ffe2f2";
           ctx.shadowColor = "#ff5eb8";
-          ctx.shadowBlur = (5 + point.frontness * 7) * sizePerspective;
+          ctx.shadowBlur = shadowEnabled ? (5 + point.frontness * 7) * sizePerspective : 0;
           ctx.fillText(item.wish, point.x, point.y);
         } else if (item.butterfly) {
           const size = Math.max(9, Math.min(13, scale * 1.5)) * sizePerspective * 0.65;
           ctx.shadowColor = "#e18bff";
-          ctx.shadowBlur = size * (1.2 + Math.max(0, point.frontness) * 0.9);
+          ctx.shadowBlur = shadowEnabled ? size * (1.2 + Math.max(0, point.frontness) * 0.9) : 0;
           drawButterfly(point.x, point.y, size, time, item.phase);
           ctx.shadowBlur = 0;
         } else if (item.sparkle) {
@@ -518,7 +550,7 @@
           ctx.globalAlpha *= shimmer;
           ctx.fillStyle = "#fff0ff";
           ctx.shadowColor = "#c69aff";
-          ctx.shadowBlur = size * (1.3 + Math.max(0, point.frontness) * 1.1);
+          ctx.shadowBlur = shadowEnabled ? size * (1.3 + Math.max(0, point.frontness) * 1.1) : 0;
           ctx.font = `bold ${size}px Georgia, serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -527,7 +559,7 @@
           const size = Math.max(8, Math.min(12, scale * 1.3)) * sizePerspective;
           ctx.fillStyle = "#ff9bd8";
           ctx.shadowColor = "#ff42b0";
-          ctx.shadowBlur = size * 0.9;
+          ctx.shadowBlur = shadowEnabled ? size * 0.9 : 0;
           ctx.font = `bold ${size}px Arial, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -633,6 +665,41 @@
       ctx.restore();
     }
 
+    // Dựng lại hạt theo số lượng đã giảm khi hạ cấp chất lượng. instant=true để các hạt
+    // trái tim xuất hiện thẳng ở vị trí cuối, không "bay vào" lại giữa chừng gây giật mắt.
+    function applyQualityTier() {
+      const step = QUALITY_STEPS[qualityTier];
+      particleCount = Math.round(PARTICLE_COUNT * step.particle);
+      ringCount = Math.round(RING_COUNT * step.ring);
+      outerRingCount = Math.round(OUTER_RING_COUNT * step.outer);
+      decorCount = Math.round(240 * step.decor);
+      shadowEnabled = step.shadow;
+      createParticles(particleCount, true);
+      createRing(ringCount);
+      createOuterRing(outerRingCount);
+      createSphereDecorations(decorCount);
+    }
+
+    // Đo FPS trung bình mỗi ~1.2s; nếu thấp hơn ngưỡng và còn có thể hạ, giảm một bậc
+    // chất lượng. Chỉ hạ, không tự nâng lại, để tránh nhấp nháy qua lại giữa các mức.
+    function checkAdaptiveQuality(time) {
+      if (time - lastQualityCheck < 1200) return;
+      lastQualityCheck = time;
+      if (fpsAccumFrames < 30) {
+        fpsAccumTime = 0;
+        fpsAccumFrames = 0;
+        return;
+      }
+      const avgDelta = fpsAccumTime / fpsAccumFrames;
+      fpsAccumTime = 0;
+      fpsAccumFrames = 0;
+      const fps = 1000 / avgDelta;
+      if (fps < 42 && qualityTier > 0 && animationStartTime !== null && time - animationStartTime > 2500) {
+        qualityTier -= 1;
+        applyQualityTier();
+      }
+    }
+
     function resize() {
       pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25); // giới hạn độ phân giải để giảm tải vẽ yếu
       width = window.innerWidth;
@@ -644,12 +711,30 @@
 
     function draw(time) {
       requestAnimationFrame(draw);
-      if (time - lastFrameTime < FRAME_INTERVAL) return;
-      const elapsedMs = Math.max(0, time - lastFrameTime);
+
+      // --- Vòng lặp "fixed timestep" ---
+      // Thay vì so trực tiếp "time - lastFrameTime < FRAME_INTERVAL" rồi bỏ qua khung hình
+      // (cách cũ khiến khoảng cách giữa các lần vẽ không đều trên màn hình không phải 60Hz,
+      // gây giật/khựng), ta cộng dồn thời gian trôi qua vào frameAccumulator và chỉ vẽ khi
+      // đã đủ một bước 16.7ms, dùng đúng BỘI SỐ của bước đó làm elapsedMs. Nhờ vậy tốc độ
+      // hoạt ảnh luôn nhất quán dù thiết bị quét ở 60Hz, 90Hz hay 120Hz.
+      if (lastFrameTime === 0) lastFrameTime = time;
+      const rawDelta = time - lastFrameTime;
+      lastFrameTime = time;
+      // Ghi lại nhịp thật của mỗi lần trình duyệt gọi rAF (kể cả những lần bị bỏ qua bên
+      // dưới) để đo đúng hiệu năng thực tế, dùng cho hệ thống chất lượng tự động.
+      fpsAccumTime += rawDelta;
+      fpsAccumFrames += 1;
+      frameAccumulator += rawDelta;
+      if (frameAccumulator < FRAME_INTERVAL) return;
+      // Giới hạn tối đa 3 bước/khung để tránh "nhảy" mạnh sau khi đổi tab hoặc máy bị lag.
+      const steps = Math.min(3, Math.floor(frameAccumulator / FRAME_INTERVAL));
+      frameAccumulator -= steps * FRAME_INTERVAL;
+      const elapsedMs = steps * FRAME_INTERVAL;
       const elapsedSeconds = Math.min(0.05, elapsedMs / 1000);
       const frameScale = Math.min(2, elapsedMs / (1000 / 60));
-      lastFrameTime = time;
       if (animationStartTime === null) animationStartTime = time;
+      checkAdaptiveQuality(time);
       ctx.clearRect(0, 0, width, height);
 
       build = Math.min(1, build + 0.009 * frameScale);
@@ -843,10 +928,10 @@
     });
 
     resize();
-    createParticles();
-    createRing();
-    createOuterRing();
-    createSphereDecorations();
+    createParticles(particleCount);
+    createRing(ringCount);
+    createOuterRing(outerRingCount);
+    createSphereDecorations(decorCount);
     window.addEventListener("resize", resize);
     requestAnimationFrame(draw);
   </script>
