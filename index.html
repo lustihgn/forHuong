@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Particle Heart</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet" />
   <style>
     :root { box-sizing: border-box; }
     html, body {
@@ -47,7 +44,6 @@
       box-shadow: 0 18px 70px rgba(255, 66, 176, 0.28);
       transform: translateY(14px) scale(0.97);
       transition: transform 220ms ease;
-      will-change: transform;
     }
     .wish-modal.open .wish-card { transform: translateY(0) scale(1); }
     .wish-close {
@@ -64,7 +60,12 @@
       font: 24px/1 Arial, sans-serif;
       cursor: pointer;
     }
-    .memory-image { display: block; width: 100%; height: 205px; object-fit: cover; background: #160d36; }
+    .memory-frame { position: relative; width: 100%; height: 205px; overflow: hidden; background: #160d36; }
+    .memory-image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 500ms ease; }
+    .memory-image.active { opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .memory-image { transition: none; }
+    }
     .wish-content { padding: 20px 24px 26px; }
     .wish-content h2 { margin: 0 0 9px; color: #ffb4dc; font: 600 20px Arial, sans-serif; }
     .wish-selected { margin: 0 0 10px; color: #fff; font: 600 17px Arial, sans-serif; }
@@ -80,7 +81,10 @@
   <div class="wish-modal" id="wishModal" aria-hidden="true">
     <section class="wish-card" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
       <button class="wish-close" id="wishClose" type="button" aria-label="Đóng">×</button>
-      <img class="memory-image" src="anh1.jpg" alt="Ảnh kỷ niệm" />
+      <div class="memory-frame">
+        <img class="memory-image" alt="Ảnh kỷ niệm" />
+        <img class="memory-image" alt="Ảnh kỷ niệm" />
+      </div>
       <div class="wish-content">
         <h2 id="wishTitle">Một lời nhắn dành cho bạn</h2>
         <p class="wish-selected" id="wishSelected"></p>
@@ -98,14 +102,12 @@
     }, { once: true });
     const particles = [];
 
-    // Giảm số lượng hạt vẽ mỗi khung hình để chuyển động ổn định hơn trên điện thoại.
-    const PARTICLE_COUNT = 4800;
-    const RING_COUNT = 1900;
-    const OUTER_RING_COUNT = 900;
-    const STAR_COUNT = 350;
-    const FRAME_INTERVAL = 1000 / 60;
+    // Giữ mật độ hiệu ứng vừa phải để hoạt ảnh nhẹ hơn trên điện thoại.
+    const PARTICLE_COUNT = 3000;
+    const RING_COUNT = 1200;
+    const OUTER_RING_COUNT = 550;
+    const STAR_COUNT = 220;
     let lastFrameTime = 0;
-    let frameAccumulator = 0;
 
     const stars = Array.from({ length: STAR_COUNT }, () => ({
       x: (Math.random() - 0.5) * 4.8,
@@ -115,6 +117,7 @@
       opacity: 0.38 + Math.random() * 0.42,
       phase: Math.random() * Math.PI * 2
     }));
+    // Mảng chiếu sao được cấp phát một lần, tái sử dụng mỗi khung hình (tránh GC do tạo mảng mới liên tục)
     const projectedStars = stars.map(star => ({ star, x: 0, y: 0, radius: 0, depth: 0 }));
 
     let width = 0;
@@ -135,28 +138,17 @@
     let pinchStartDistance = 0;
     let pinchStartZoom = 1;
     let wasPinching = false;
-    let lastInteractionTime = 0;
+    let lastInteractionTime = 0;   // thời điểm tương tác gần nhất, để bật auto-rotate khi rảnh
     const wishHitTargets = [];
     const wishModal = document.getElementById("wishModal");
-    // Khi bảng lời nhắn đang mở, tạm dừng vòng lặp vẽ hạt nặng (canvas giữ nguyên khung
-    // hình cuối) để nhường CPU/GPU cho hiệu ứng mở/đóng modal và backdrop-filter chạy
-    // mượt, thay vì phải tranh chấp tài nguyên với hàng ngàn hạt đang animate phía sau.
-    let animationPaused = false;
+    const memoryImages = [...document.querySelectorAll(".memory-image")];
+    let imageRequestId = 0;
 
-    let qualityTier = 2;
-    const QUALITY_STEPS = [
-      { particle: 0.35, ring: 0.4, outer: 0.4, decor: 0.5, shadow: false },
-      { particle: 0.6, ring: 0.6, outer: 0.6, decor: 0.75, shadow: true },
-      { particle: 1, ring: 1, outer: 1, decor: 1, shadow: true }
-    ];
-    let shadowEnabled = true;
+    const shadowEnabled = true;
     let particleCount = PARTICLE_COUNT;
     let ringCount = RING_COUNT;
     let outerRingCount = OUTER_RING_COUNT;
     let decorCount = 240;
-    let fpsAccumTime = 0;
-    let fpsAccumFrames = 0;
-    let lastQualityCheck = 0;
     const extraWishes = [
       "Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.",
       "Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.",
@@ -169,34 +161,42 @@
     ];
 
     function openWish(item) {
-      const image = document.querySelector(".memory-image");
+      const requestId = ++imageRequestId;
       const imageCount = 12;
       let attempts = 0;
       let imageIndex = Math.abs(item.index) % imageCount + 1;
-      image.onerror = () => {
-        attempts++;
-        if (attempts >= imageCount) {
-          image.onerror = null;
-          image.removeAttribute("src");
-          return;
-        }
-        imageIndex = imageIndex % imageCount + 1;
-        image.src = `anh${imageIndex}.jpg`;
+      const currentImage = memoryImages.find(image => image.classList.contains("active"));
+      const nextImage = memoryImages.find(image => image !== currentImage);
+      nextImage.classList.remove("active");
+
+      const loadNextImage = () => {
+        if (requestId !== imageRequestId) return;
+        nextImage.onload = () => {
+          if (requestId !== imageRequestId) return;
+          nextImage.classList.add("active");
+          if (currentImage) currentImage.classList.remove("active");
+        };
+        nextImage.onerror = () => {
+          if (requestId !== imageRequestId) return;
+          attempts++;
+          if (attempts >= imageCount) return;
+          imageIndex = imageIndex % imageCount + 1;
+          nextImage.src = `anh${imageIndex}.jpg`;
+        };
+        nextImage.src = `anh${imageIndex}.jpg`;
       };
-      image.src = `anh${imageIndex}.jpg`;
+      loadNextImage();
       document.getElementById("wishSelected").textContent = item.wish;
       document.getElementById("wishMessage").textContent = extraWishes[
         Math.abs(item.index) % extraWishes.length
       ];
       wishModal.classList.add("open");
       wishModal.setAttribute("aria-hidden", "false");
-      animationPaused = true;
     }
 
     function closeWish() {
       wishModal.classList.remove("open");
       wishModal.setAttribute("aria-hidden", "true");
-      animationPaused = false;
     }
 
     function ease(t) {
@@ -258,6 +258,7 @@
         point.depth = depth;
       }
 
+      // Sao không che khuất nhau đáng kể, nên không cần sắp xếp lại mỗi khung hình.
       for (const point of projectedStars) {
         const star = point.star;
         ctx.globalAlpha = star.opacity * 0.2;
@@ -273,8 +274,10 @@
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+
     }
 
+    // Tông tím lavender giữ sắc tím rõ nét khi các hạt cộng sáng.
     const PALETTE = { center: [208, 178, 255], edge: [112, 72, 220] };
 
     function heart(t) {
@@ -295,6 +298,7 @@
     function sampleHeartPoint() {
       while (true) {
         const angle = Math.random() * Math.PI * 2;
+        // Chừa lõi rỗng nhỏ để trái tim có cảm giác viền hạt.
         const depth = 0.22 + Math.pow(Math.random(), 0.18) * 0.78;
         const point = heart(angle);
         const x = point.x * depth;
@@ -309,6 +313,9 @@
       particles.length = 0;
       for (let i = 0; i < count; i++) {
         const point = sampleHeartPoint();
+        // Vị trí bắt đầu ngẫu nhiên ngoài rìa để bay hội tụ vào hình tim lúc mở trang.
+        // Khi dựng lại giữa chừng (hạ cấp chất lượng), đặt thẳng vào vị trí cuối
+        // (instant=true) để không bị "bay vào" lại gây giật mắt.
         const startAngle = Math.random() * Math.PI * 2;
         const startDist = 60 + Math.random() * 40;
         particles.push({
@@ -322,7 +329,7 @@
           opacity: 0.65 + point.depth * 0.35,
           phase: Math.random() * Math.PI * 2,
           speed: 0.006 + Math.random() * 0.01,
-          arrive: 0.4 + Math.random() * 0.6
+          arrive: 0.4 + Math.random() * 0.6 // thời điểm (0..1 của formBuild) hạt này "đến nơi"
         });
       }
     }
@@ -364,7 +371,7 @@
     }
 
     function createOuterRing(count = OUTER_RING_COUNT) {
-      outerRingParticles.length = 0;
+      outerRingParticles.length = 0; // (trước đây thiếu dòng này — sẽ nhân đôi hạt nếu gọi lại)
       for (let i = 0; i < count; i++) {
         const outward = Math.pow(Math.random(), 0.55);
         outerRingParticles.push({
@@ -428,10 +435,12 @@
         ctx.bezierCurveTo(-16, 0.5, -12, 3, -7, 2.5);
         ctx.bezierCurveTo(-3, 2.5, -2, 1.5, -0.5, 0);
         ctx.closePath();
+        // Một khe nhỏ xuyên qua cánh để nền hiện ra bên trong.
         ctx.ellipse(-9, -4.5, 1.6, 1.1, -0.35, 0, Math.PI * 2);
         ctx.fill("evenodd");
         ctx.stroke();
 
+        // Chút sắc tối tạo chiều sâu mà không làm cánh bị nặng màu.
         ctx.fillStyle = "rgba(57, 34, 72, 0.24)";
         ctx.beginPath();
         ctx.ellipse(-10, -5, 1.7, 1.15, -0.35, 0, Math.PI * 2);
@@ -454,6 +463,7 @@
       ctx.restore();
     }
 
+    // Xoay một điểm quanh trục chéo cố định của quả cầu, dùng chung cho việc vẽ.
     function spinVector(x, y, z) {
       const spinCos = Math.cos(sphereSpinAngle);
       const spinSin = Math.sin(sphereSpinAngle);
@@ -481,7 +491,9 @@
       const upY = cosPitch;
       const upZ = -cosYaw * sinPitch;
 
+      // Trục này đưa chữ ở mặt trước chéo lên phía trên bên trái màn hình.
       for (const item of sphereDecorations) {
+        // Quay cả bề mặt theo một trục chéo để các chữ lần lượt đi qua mặt trước.
         const [spunX, spunY, spunZ] = spinVector(item.x, item.y, item.z);
         const frontness = (spunX * viewX + spunY * viewY + spunZ * viewZ) / SPHERE_RADIUS;
         const isBack = frontness < 0;
@@ -504,12 +516,8 @@
       projected.sort((a, b) => b.depth - a.depth);
       for (const point of projected) {
         const item = point.item;
-        // Ánh xạ liên tục theo frontness (-1..1) thay vì công thức cũ có bước nhảy đột
-        // ngột đúng lúc frontness đi qua 0 (0.28 -> 0.82) — đó là nguyên nhân gây
-        // hiện tượng chữ/trái tim "nhấp nháy" thay vì mờ dần khi xoay ra sau quả cầu.
-        const frontT = (point.frontness + 1) / 2;
-        const smoothT = frontT * frontT * (3 - 2 * frontT);
-        const clarity = 0.08 + smoothT * 0.92;
+        // Độ rõ thay đổi liên tục từ mặt sau ra mặt trước, tránh nhấp nháy ở đường chân trời.
+        const clarity = ease((point.frontness + 1) / 2);
         const sizePerspective = point.perspective ** 2;
         ctx.globalAlpha = item.opacity * visible * clarity;
 
@@ -567,6 +575,7 @@
       const cosT = Math.cos(RING_TILT);
       const sinT = Math.sin(RING_TILT);
       const rotation = time * 0.00035;
+      // Cộng ánh sáng giữa các hạt để chúng rực hơn mà vẫn giữ kích thước nét.
       ctx.globalCompositeOperation = "lighter";
 
       for (const p of particlesToDraw) {
@@ -584,6 +593,7 @@
         const py = centerY + (ry + RING_Y_OFFSET) * scale;
         const depthFade = isBack ? 0.75 : 1;
 
+        // Giữ vành đai vừa đủ rõ khi thu nhỏ, tránh các hạt quá sáng và lớn.
         const minOpacity = particlesToDraw === ringParticles ? 0.58 : 0.48;
         ctx.globalAlpha = Math.max(minOpacity, p.opacity) * visible * depthFade;
         ctx.fillStyle = p.color;
@@ -596,16 +606,18 @@
     }
 
     function drawGreeting(centerX, centerY, heartScale, visible, retreatBuild, greetingBuild) {
+      // Lời chúc chỉ hiện sau khi trái tim tạo hình xong, rồi mờ dần khi trái tim thu nhỏ.
       const fade = visible * greetingBuild * (1 - ease(retreatBuild));
       if (fade <= 0.001) return;
 
       const fontSize = Math.min(52, Math.max(24, width * 0.085));
+      // Đặt lời chúc cao hơn để tách rõ khỏi đỉnh trái tim.
       const textY = centerY - heartScale * 20 - fontSize * 1.6;
       ctx.save();
       ctx.globalAlpha = fade;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `700 ${fontSize}px "Dancing Script", cursive`;
+      ctx.font = `italic 600 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
 
       const textWidth = ctx.measureText("Happy 20-10").width;
       const ornamentY = textY - fontSize * 0.68;
@@ -623,7 +635,7 @@
       ctx.fillText("❧", centerX - textWidth * 0.4, ornamentY + fontSize * 0.02);
       ctx.fillText("❧", centerX + textWidth * 0.4, ornamentY + fontSize * 0.02);
 
-      ctx.font = `700 ${fontSize}px "Dancing Script", cursive`;
+      ctx.font = `italic 600 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
       ctx.shadowColor = "#6846f5";
       ctx.shadowBlur = fontSize * 0.72;
       const lettering = ctx.createLinearGradient(centerX - textWidth * 0.55, textY, centerX + textWidth * 0.55, textY);
@@ -654,39 +666,8 @@
       ctx.restore();
     }
 
-    function applyQualityTier() {
-      const step = QUALITY_STEPS[qualityTier];
-      particleCount = Math.round(PARTICLE_COUNT * step.particle);
-      ringCount = Math.round(RING_COUNT * step.ring);
-      outerRingCount = Math.round(OUTER_RING_COUNT * step.outer);
-      decorCount = Math.round(240 * step.decor);
-      shadowEnabled = step.shadow;
-      createParticles(particleCount, true);
-      createRing(ringCount);
-      createOuterRing(outerRingCount);
-      createSphereDecorations(decorCount);
-    }
-
-    function checkAdaptiveQuality(time) {
-      if (time - lastQualityCheck < 1200) return;
-      lastQualityCheck = time;
-      if (fpsAccumFrames < 30) {
-        fpsAccumTime = 0;
-        fpsAccumFrames = 0;
-        return;
-      }
-      const avgDelta = fpsAccumTime / fpsAccumFrames;
-      fpsAccumTime = 0;
-      fpsAccumFrames = 0;
-      const fps = 1000 / avgDelta;
-      if (fps < 42 && qualityTier > 0 && animationStartTime !== null && time - animationStartTime > 2500) {
-        qualityTier -= 1;
-        applyQualityTier();
-      }
-    }
-
     function resize() {
-      pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25);
+      pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25); // giới hạn độ phân giải để giảm tải vẽ yếu
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = width * pixelRatio;
@@ -697,43 +678,42 @@
     function draw(time) {
       requestAnimationFrame(draw);
 
+      // Vẽ trên mọi lần requestAnimationFrame để không bỏ khung hình trên màn hình 90/120Hz.
       if (lastFrameTime === 0) lastFrameTime = time;
       const rawDelta = time - lastFrameTime;
       lastFrameTime = time;
-      fpsAccumTime += rawDelta;
-      fpsAccumFrames += 1;
-      frameAccumulator += rawDelta;
-      if (frameAccumulator < FRAME_INTERVAL) return;
-      const steps = Math.min(3, Math.floor(frameAccumulator / FRAME_INTERVAL));
-      frameAccumulator -= steps * FRAME_INTERVAL;
-      const elapsedMs = steps * FRAME_INTERVAL;
-      const elapsedSeconds = Math.min(0.05, elapsedMs / 1000);
-      const frameScale = Math.min(2, elapsedMs / (1000 / 60));
+      const elapsedMs = Math.min(50, rawDelta);
+      const elapsedSeconds = elapsedMs / 1000;
+      const frameScale = elapsedMs / (1000 / 60);
       if (animationStartTime === null) animationStartTime = time;
-      // Trong lúc bảng lời nhắn mở: đã cập nhật xong lastFrameTime/frameAccumulator ở
-      // trên nên khi đóng lại chuyển động sẽ tiếp tục đúng nhịp, không bị "nhảy" khung.
-      if (animationPaused) return;
-      checkAdaptiveQuality(time);
+      // Giữ số lượng hạt ổn định trong suốt hoạt ảnh để không dựng lại cảnh đột ngột.
       ctx.clearRect(0, 0, width, height);
 
       build = Math.min(1, build + 0.009 * frameScale);
       const visible = ease(build);
+      // Chỉ thu nhỏ trái tim và hiện quả cầu sau lần chạm/nhấp đầu tiên.
       const retreatBuild = transitionStartTime === null
         ? 0
         : Math.max(0, Math.min(1, (time - transitionStartTime) / 2000));
       const heartZoom = 2.2 - 1.2 * ease(retreatBuild);
+      // Cho quả cầu và vành đai mờ dần vào ở cuối lúc tim thu nhỏ, tránh xuất hiện đột ngột.
       const ringBuild = transitionStartTime === null
         ? 0
         : Math.max(0, Math.min(1, (time - transitionStartTime - 1650) / 2600));
       const ringVisible = ease(ringBuild);
+      // Hạt trung tâm hội tụ dần từ vị trí xuất phát về đúng hình trái tim
       const formBuild = Math.min(1, (time - animationStartTime) / 2600);
+      // Bắt đầu hiện lời chúc sau khi trái tim đã tạo hình xong.
       const greetingBuild = ease(Math.max(0, Math.min(1, (time - animationStartTime - 2600) / 700)));
 
+      // Quả cầu tự xoay chậm, không cần giữ hay kéo màn hình.
       sphereSpinAngle += 0.08 * elapsedSeconds;
       sphereZoom += (targetSphereZoom - sphereZoom) * (1 - Math.exp(-8 * elapsedSeconds));
+      // Xoay góc nhìn nhẹ khi người dùng không tương tác.
       if (!dragPointer && time - lastInteractionTime > 2500) {
         targetCameraYaw += 0.00028 * frameScale;
       }
+      // Nội suy góc để chuyển động kéo và xoay tự động không bị khựng giữa các khung hình.
       const rotationEase = 1 - Math.exp(-12 * elapsedSeconds);
       cameraYaw += (targetCameraYaw - cameraYaw) * rotationEase;
       cameraPitch += (targetCameraPitch - cameraPitch) * rotationEase;
@@ -741,16 +721,20 @@
 
       const centerX = width / 2;
       const centerY = height / 2 - height * 0.05;
+      // Nhịp tim đôi kiểu "lub-dub" thay vì sin đều
       const beat = Math.pow(Math.max(0, Math.sin(time * 0.0021)), 2) * 0.85
         + Math.pow(Math.max(0, Math.sin(time * 0.0021 - 0.55)), 2) * 0.35;
       const pulse = 1 + beat * 0.045;
+      // Giữ toàn bộ cảnh nhỏ ngay từ đầu để tạo cảm giác đang ở xa.
       const zoomOut = 1;
       const scale = Math.min(width, height) * (width <= 600 ? 0.038 : 0.0135) * 0.5 * 0.45;
       const zoomedScale = scale * sphereZoom;
       const sphereScale = zoomedScale * 1.2 * 1.3;
+      // Nhịp đập chỉ tác động lên trái tim ở giữa, không ảnh hưởng quả cầu/vành đai.
       const heartScale = scale * 1.18 * 1.2 * 0.88 * pulse * heartZoom;
       const pulseExtra = (pulse - 1) * 0.6;
 
+      // Nền và họa tiết giữ màu bình thường; riêng các hạt dùng cộng sáng để phát quang rõ hơn.
       ctx.globalCompositeOperation = "source-over";
 
       if (ringVisible > 0) {
@@ -767,6 +751,7 @@
         const chaosX = Math.sin(time * 0.0022 + particle.phase * 3.1) * (0.7 + particle.radius * 8);
         const chaosY = Math.cos(time * 0.0018 + particle.phase * 2.4) * (0.7 + particle.radius * 8);
 
+        // Nội suy từ vị trí xuất phát (bay từ ngoài vào) tới vị trí hình tim thật
         const arriveT = Math.min(1, Math.max(0, (formBuild - (particle.arrive - 0.4)) / 0.6));
         const settle = ease(arriveT);
         const baseX = particle.startX + (particle.x - particle.startX) * settle;
@@ -780,6 +765,7 @@
         ctx.globalAlpha = Math.min(1, (particle.opacity + sparkle + twinkle * 0.22) * visible);
         ctx.fillStyle = particle.color;
         ctx.beginPath();
+        // Giữ hạt có kích thước tối thiểu để hình tim vẫn sáng rõ khi thu nhỏ.
         ctx.arc(centerX + offsetX, centerY + offsetY, Math.max(0.62, particle.radius * heartScale * (1 + twinkle * 0.55)), 0, Math.PI * 2);
         ctx.fill();
       }
@@ -791,6 +777,7 @@
         drawSpherePass(centerX, centerY, sphereScale, ringVisible, time, false);
       }
 
+      // Vẽ lời chúc sau quả cầu để chữ luôn rõ và không bị các họa tiết che mất.
       drawGreeting(centerX, centerY, heartScale, visible, retreatBuild, greetingBuild);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
@@ -893,6 +880,12 @@
     });
 
     resize();
+    if (width <= 600) {
+      particleCount = Math.round(PARTICLE_COUNT * 0.55);
+      ringCount = Math.round(RING_COUNT * 0.55);
+      outerRingCount = Math.round(OUTER_RING_COUNT * 0.55);
+      decorCount = Math.round(240 * 0.7);
+    }
     createParticles(particleCount);
     createRing(ringCount);
     createOuterRing(outerRingCount);
