@@ -13,18 +13,18 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#020817}
 canvas{display:block;width:100%;height:100%;touch-action:none}
 .wish-modal{position:fixed;inset:0;z-index:2;display:grid;place-items:center;padding:22px;background:rgba(2,5,20,.72);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s}
 .wish-modal.open{opacity:1;visibility:visible}
-.wish-card{position:relative;width:min(360px,100%);overflow:hidden;border:1px solid rgba(255,177,224,.45);border-radius:24px;color:#fff2fa;text-align:center;background:linear-gradient(155deg,#24133d,#10152d 68%,#261333);box-shadow:0 18px 70px rgba(255,66,176,.28);transform:translateY(14px) scale(.97);transition:transform .22s}
+.wish-card{position:relative;width:min(360px,100%);max-height:calc(100dvh - 44px);overflow-y:auto;border:1px solid rgba(255,177,224,.45);border-radius:24px;color:#fff2fa;text-align:center;background:linear-gradient(155deg,#24133d,#10152d 68%,#261333);box-shadow:0 18px 70px rgba(255,66,176,.28);transform:translateY(14px) scale(.97);transition:transform .22s}
 .wish-modal.open .wish-card{transform:none}
 .wish-close{position:absolute;z-index:1;top:11px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.35);border-radius:50%;color:#fff;background:rgba(9,8,27,.55);font:24px/1 Arial,sans-serif;cursor:pointer}
-.memory-frame{position:relative;width:100%;height:205px;overflow:hidden;background:#160d36}
+.memory-frame{position:relative;width:100%;height:205px;overflow:hidden;background:#160d36;transition:height .35s ease}
 .memory-frame.no-photo{display:none}
-.memory-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .5s}
+.memory-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .5s}
 .memory-image.active{opacity:1}
 .wish-content{padding:20px 24px 26px}
 .wish-content h2{margin:0 0 9px;color:#ffb4dc;font:600 20px Arial,sans-serif}
 .wish-selected{margin:0 0 10px;color:#fff;font:600 17px Arial,sans-serif}
 .wish-message{margin:0;color:#e8dcf3;font:15px/1.6 Arial,sans-serif}
-@media(prefers-reduced-motion:reduce){.memory-image,.wish-modal,.wish-card{transition:none}}
+@media(prefers-reduced-motion:reduce){.memory-image,.memory-frame,.wish-modal,.wish-card{transition:none}}
 </style>
 </head>
 <body>
@@ -92,6 +92,10 @@ function openWish(item){
   next.onload=()=>{
     if(requestId!==imageRequestId)return;
     memoryFrame.classList.remove("no-photo");
+    // Khung cao đúng theo tỉ lệ ảnh (tối đa nửa màn hình) để thấy trọn ảnh
+    const ratio=next.naturalHeight/next.naturalWidth;
+    const w=memoryFrame.clientWidth||330;
+    memoryFrame.style.height=Math.max(140,Math.min(w*ratio,window.innerHeight*.5))+"px";
     next.classList.add("active");
     if(current)current.classList.remove("active");
   };
@@ -111,6 +115,7 @@ function closeWish(){wishModal.classList.remove("open");wishModal.setAttribute("
 
 const ease=t=>t*t*(3-2*t);
 const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+const smoother=t=>{t=Math.max(0,Math.min(1,t));return t*t*t*(t*(t*6-15)+10)};
 
 /* ---- Biểu tượng tự vẽ (không phụ thuộc font/emoji) ---- */
 function fillSparkle(x,y,r){
@@ -207,7 +212,7 @@ function createSphereDecorations(count){
   for(let i=0;i<count;i++){
     const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden,r=SPHERE_RADIUS*(.94+random()*.12);
     const isWish=i%6===0;
-    sphereDecorations.push({x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.55});
+    sphereDecorations.push({x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
   }
 }
 
@@ -220,17 +225,17 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal){
   if(!backPass)wishHitTargets.length=0;
   const cY=Math.cos(cameraYaw),sY=Math.sin(cameraYaw),cP=Math.cos(cameraPitch),sP=Math.sin(cameraPitch);
   const camDist=SPHERE_RADIUS*3.6,vX=sY*cP,vY=sP,vZ=cY*cP,rX=cY,rZ=-sY,uX=-sY*sP,uY=cP,uZ=-cY*sP;
+  const FAR_MIN=.18;   // độ sáng tối thiểu của vật ở xa (0 = biến mất hẳn, 1 = rõ như phía trước)
   const list=[];
   for(const item of sphereDecorations){
-    const itemVis=smooth((reveal-item.delay)/.45);      // từng chữ hiện dần, lệch nhau
+    const itemVis=smoother((reveal*1.35-item.delay)/.7);   // mỗi chữ hiện chậm và chồng lên nhau
     if(itemVis<=.001)continue;
     const[x,y,z]=spinVector(item.x,item.y,item.z);
     const dv=x*vX+y*vY+z*vZ,front=dv/SPHERE_RADIUS;
     if((front<0)!==backPass)continue;
-    const clarity=Math.pow(smooth((front+.35)/1.2),1.3); // xa thì mờ hẳn, liên tục, không nhấp nháy
-    if(clarity<.01)continue;
+    const clarity=FAR_MIN+(1-FAR_MIN)*Math.pow(smooth((front+.35)/1.2),1.3);
     const persp=camDist/(camDist-dv);
-    list.push({item,x:cx+(x*rX+z*rZ)*scale*persp,y:cy+(x*uX+y*uY+z*uZ)*scale*persp,depth:camDist-dv,persp,front,clarity,alpha:item.opacity*itemVis*clarity});
+    list.push({item,x:cx+(x*rX+z*rZ)*scale*persp,y:cy+(x*uX+y*uY+z*uZ)*scale*persp,depth:camDist-dv,persp,front,clarity,itemVis,alpha:item.opacity*itemVis*clarity});
   }
   list.sort((a,b)=>b.depth-a.depth);
   ctx.textAlign="center";ctx.textBaseline="middle";
@@ -238,7 +243,7 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal){
     const item=p.item,sp=p.persp**2,glow=p.clarity;
     ctx.globalAlpha=p.alpha;
     if(item.wish){
-      const fs=Math.max(6,Math.min(9,scale*1.05))*sp,k=fs/20;
+      const fs=Math.max(6,Math.min(9,scale*1.05))*sp,k=fs/20*(.85+.15*p.itemVis);
       if(!backPass&&p.clarity>.3)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*.85,18),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
       ctx.font='600 20px Arial,Helvetica,sans-serif';   // cỡ chữ cố định + scale => chữ nhỏ không rung
       ctx.fillStyle="#ffe2f2";ctx.shadowColor="#ff5eb8";
@@ -342,11 +347,11 @@ function draw(time){
   const visible=ease(build);
   const retreat=transitionStartTime===null?0:Math.max(0,Math.min(1,(time-transitionStartTime)/2000));
   const heartZoom=2.2-1.2*ease(retreat);
-  const revealT=transitionStartTime===null?0:Math.max(0,Math.min(1,(time-transitionStartTime-900)/3600));
-  const ringVisible=smooth(revealT/.8);
-  const grow=1-Math.pow(1-revealT,3);
-  const formBuild=Math.min(1,(time-animationStartTime)/2600);
-  const greetBuild=ease(Math.max(0,Math.min(1,(time-animationStartTime-2600)/700)));
+  const revealT=transitionStartTime===null?0:Math.max(0,Math.min(1,(time-transitionStartTime-700)/5200));
+  const ringVisible=smoother(revealT/.75);
+  const grow=smoother(revealT);
+  const formBuild=Math.min(1.2,(time-animationStartTime)/2600);            // 1.2 để mọi hạt vào đúng chỗ
+  const greetBuild=smoother((time-animationStartTime-3300)/1800);          // chữ hiện dần sau khi tim hoàn thành
   sphereSpinAngle+=.08*sec;
   sphereZoom+=(targetSphereZoom-sphereZoom)*(1-Math.exp(-8*sec));
   if(!dragPointer&&time-lastInteractionTime>2500)targetCameraYaw+=.00028*fScale;
@@ -357,7 +362,7 @@ function draw(time){
   const beat=Math.pow(Math.max(0,Math.sin(time*.0021)),2)*.85+Math.pow(Math.max(0,Math.sin(time*.0021-.55)),2)*.35;
   const pulse=1+beat*.045;
   const scale=Math.min(width,height)*(width<=600?.038:.0135)*.5*.45;
-  const zs=scale*sphereZoom*(.72+.28*grow),sphereScale=zs*1.2*1.3;
+  const zs=scale*sphereZoom*(.6+.4*grow),sphereScale=zs*1.2*1.3;
   const heartScale=scale*1.18*1.2*.88*pulse*heartZoom,pulseExtra=(pulse-1)*.6;
   ctx.globalCompositeOperation="source-over";
   if(ringVisible>0){
