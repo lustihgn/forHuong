@@ -17,10 +17,9 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .wish-modal.open .wish-card{opacity:1;transform:none}
 .wish-close{position:absolute;z-index:1;top:11px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.35);border-radius:50%;color:#fff;background:rgba(9,8,27,.55);font:24px/1 Arial,sans-serif;cursor:pointer;transition:transform .25s ease,background .25s ease}
 .wish-close:hover{transform:rotate(90deg);background:rgba(9,8,27,.8)}
-.memory-frame{position:relative;width:100%;height:205px;overflow:hidden;background:#160d36;transition:height .6s cubic-bezier(.22,1,.36,1)}
+.memory-frame{display:grid;width:100%;max-height:45dvh;overflow-y:auto;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px;box-sizing:border-box;background:#160d36}
 .memory-frame.no-photo{display:none}
-.memory-image{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transform:scale(1.02);transition:opacity .24s ease,transform .35s cubic-bezier(.22,1,.36,1)}
-.memory-image.active{opacity:1;transform:none}
+.memory-image{display:block;width:100%;aspect-ratio:1;object-fit:cover;border:1px solid rgba(255,255,255,.18);border-radius:10px}
 .wish-content{padding:20px 24px 26px}
 .wish-content h2,.wish-content .wish-selected,.wish-content .wish-message{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .6s cubic-bezier(.22,1,.36,1)}
 .wish-modal.open .wish-content h2{opacity:1;transform:none;transition-delay:.12s}
@@ -38,7 +37,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 <div class="wish-modal" id="wishModal" aria-hidden="true">
   <section class="wish-card" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
     <button class="wish-close" id="wishClose" type="button" aria-label="Đóng">×</button>
-    <div class="memory-frame no-photo"><img class="memory-image" alt="Ảnh kỷ niệm"><img class="memory-image" alt="Ảnh kỷ niệm"></div>
+    <div class="memory-frame no-photo" aria-label="Thư viện ảnh kỷ niệm"></div>
     <div class="wish-content">
       <h2 id="wishTitle">Một lời nhắn dành cho bạn</h2>
       <p class="wish-selected" id="wishSelected"></p>
@@ -104,7 +103,6 @@ const PALETTE={center:[239,205,255],edge:[139,121,255]};
 /* ---- Thẻ lời nhắn ---- */
 const wishModal=document.getElementById("wishModal");
 const memoryFrame=document.querySelector(".memory-frame");
-const memoryImages=[...document.querySelectorAll(".memory-image")];
 const imageCount=12;
 const preloadedMemoryImages=Array.from({length:imageCount},(_,i)=>{
   const image=new Image();
@@ -115,12 +113,10 @@ const preloadedMemoryImages=Array.from({length:imageCount},(_,i)=>{
   image.src=`anh${i+1}.jpg`;
   return loaded;
 });
-let imageRequestId=0,modalOpen=false,slideshowTimer=null;
+let imageRequestId=0,modalOpen=false;
 async function openWish(item){
   const requestId=++imageRequestId;
-  clearTimeout(slideshowTimer);
-  slideshowTimer=null;
-  memoryImages.forEach(image=>image.classList.remove("active"));
+  memoryFrame.replaceChildren();
   memoryFrame.classList.add("no-photo");
 
   document.getElementById("wishSelected").textContent=item.wish;
@@ -132,35 +128,17 @@ async function openWish(item){
   const photos=(await Promise.all(preloadedMemoryImages)).filter(Boolean);
   if(requestId!==imageRequestId||photos.length===0)return;
 
-  let photoIndex=0;
-  function showNextPhoto(){
-    if(requestId!==imageRequestId)return;
-    const photo=photos[photoIndex];
-    const current=memoryImages.find(image=>image.classList.contains("active"));
-    const next=memoryImages.find(image=>image!==current)||memoryImages[0];
-    let revealed=false;
-    const reveal=()=>{
-      if(revealed||requestId!==imageRequestId||!next.complete||!next.naturalWidth)return;
-      revealed=true;
-      const ratio=photo.naturalHeight/photo.naturalWidth;
-      const w=memoryFrame.clientWidth||330;
-      memoryFrame.style.height=Math.max(140,Math.min(w*ratio,window.innerHeight*.5))+"px";
-      memoryFrame.classList.remove("no-photo");
-      memoryImages.forEach(image=>image.classList.toggle("active",image===next));
-      photoIndex=(photoIndex+1)%photos.length;
-      slideshowTimer=setTimeout(showNextPhoto,2400);
-    };
-    next.onload=reveal;
-    next.onerror=null;
-    next.src=photo.src;
-    if(next.complete&&next.naturalWidth)reveal();
+  for(const photo of photos){
+    const image=document.createElement("img");
+    image.className="memory-image";
+    image.alt="Ảnh kỷ niệm";
+    image.src=photo.src;
+    memoryFrame.appendChild(image);
   }
-  showNextPhoto();
+  memoryFrame.classList.remove("no-photo");
 }
 function closeWish(){
   imageRequestId++;
-  clearTimeout(slideshowTimer);
-  slideshowTimer=null;
   modalOpen=false;
   wishModal.classList.remove("open");
   wishModal.setAttribute("aria-hidden","true");
@@ -279,7 +257,7 @@ function drawPrettyHeart(x,y,size,time,phase){
 }
 
 /* ---- Sprite chữ lời chúc: vẽ 1 lần vào canvas phụ, mỗi khung chỉ drawImage ---- */
-const wishSprites=new Map(),WS=4;
+const wishSprites=new Map(),WS=8;
 function wishSprite(text){
   let s=wishSprites.get(text);
   if(s)return s;
@@ -288,10 +266,10 @@ function wishSprite(text){
   const pad=14*WS,w=Math.ceil(x.measureText(text).width)+pad*2,h=Math.ceil(22*WS*1.5)+pad*2;
   c.width=w;c.height=h;
   x.font=`600 ${22*WS}px ${SCRIPT_FONT}`;x.textAlign="center";x.textBaseline="middle";
-  x.lineJoin="round";x.lineWidth=1*WS;x.strokeStyle="rgba(58,22,104,.8)";
+  x.lineJoin="round";x.lineWidth=1.7*WS;x.strokeStyle="rgba(30,12,68,1)";
   x.strokeText(text,w/2,h/2);
   const tg=x.createLinearGradient(0,h/2-11*WS,0,h/2+11*WS);
-  tg.addColorStop(0,"#fffafd");tg.addColorStop(.55,"#ffd9ef");tg.addColorStop(1,"#ffb3dd");
+  tg.addColorStop(0,"#ffffff");tg.addColorStop(.55,"#f5eaff");tg.addColorStop(1,"#d9c7ff");
   x.fillStyle=tg;x.shadowBlur=0;
   x.fillText(text,w/2,h/2);
   s={c,w:w/WS,h:h/WS};
@@ -468,12 +446,31 @@ function rebuildRingOrder(){
 }
 function createSphereDecorations(count){
   sphereDecorations.length=0;
-  const golden=Math.PI*(3-Math.sqrt(5)),wishCount=40;
+  const golden=Math.PI*(3-Math.sqrt(5)),wishCount=28;
+  const points=Array.from({length:count},(_,i)=>{
+    const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden;
+    return{x:Math.cos(a)*rr,y,z:Math.sin(a)*rr};
+  });
+  // Pick well-separated points on the Fibonacci sphere for the wish labels.
+  const wishIds=new Set(),chosen=[points[Math.floor(count/2)]];
+  wishIds.add(Math.floor(count/2));
+  while(chosen.length<wishCount){
+    let best=-1,bestDistance=Infinity;
+    for(let i=0;i<count;i++){
+      if(wishIds.has(i))continue;
+      const p=points[i];
+      let nearest=-Infinity;
+      for(const q of chosen)nearest=Math.max(nearest,p.x*q.x+p.y*q.y+p.z*q.z);
+      if(nearest>=bestDistance)continue;
+      best=i;bestDistance=nearest;
+    }
+    if(best<0)break;
+    wishIds.add(best);chosen.push(points[best]);
+  }
+  let wishIndex=0;
   for(let i=0;i<count;i++){
-    const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden,r=SPHERE_RADIUS*(.94+random()*.12);
-    const wishIndex=Math.floor((i+1)*wishCount/count)-1;
-    const isWish=Math.floor((i+1)*wishCount/count)>Math.floor(i*wishCount/count);
-    sphereDecorations.push({id:i,x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[wishIndex%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
+    const p=points[i],r=SPHERE_RADIUS*(.94+random()*.12),isWish=wishIds.has(i);
+    sphereDecorations.push({id:i,x:p.x*r,y:p.y*r,z:p.z*r,wish:isWish?sphereWishes[wishIndex++%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.88+random()*.12,delay:random()*.6});
   }
 }
 
@@ -508,7 +505,7 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
     const o=spherePool[list.length]||(spherePool[list.length]={});
     o.item=item;o.x=cx+(x*rX+z*rZ)*scale*persp;o.y=cy+(x*uX+y*uY+z*uZ)*scale*persp;o.depth=camDist-dv;o.persp=persp;o.front=front;o.clarity=clarity;o.itemVis=itemVis;
     const shimmer=.9+.1*Math.sin(time*.004+item.phase);
-    o.alpha=item.opacity*itemVis*clarity*sphereBrightness*shimmer;
+    o.alpha=Math.min(1,item.opacity*itemVis*clarity*sphereBrightness*shimmer*1.28);
     list.push(o);
   }
   list.sort((a,b)=>b.depth-a.depth);
@@ -517,8 +514,9 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
     const item=p.item,sp=p.persp**2,glow=p.clarity;
     ctx.globalAlpha=p.alpha;
     if(item.wish){
-      const depthScale=.78+.62*p.clarity;
-      const fs=Math.max(4,Math.min(7,scale*.95))*sp*depthScale,k=fs/20*1.4*(.7+.3*p.itemVis);
+      ctx.globalAlpha=Math.min(1,p.alpha*1.25);
+      const depthScale=.88+.62*p.clarity;
+      const fs=Math.max(7,Math.min(11,scale*1.5))*sp*depthScale,k=fs/20*1.2*(.7+.3*p.itemVis);
       if(!backPass&&p.clarity>.3&&p.itemVis>.6)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*2.4,38),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
       const sprite=wishSprite(item.wish),dw=sprite.w*k,dh=sprite.h*k;
       ctx.shadowBlur=0;
@@ -723,8 +721,8 @@ function applyQuality(){
 function resize(){
   const w=canvas.clientWidth,h=canvas.clientHeight;
   if(!w||!h)return;
-  const maxDpr=[1,1.1,1.5][quality];   // giới hạn DPR: giảm mạnh số pixel phải tô
-  pixelRatio=Math.min(window.devicePixelRatio||1,maxDpr);
+  const maxDpr=3;   // độ phân giải cao đồng đều trên mọi thiết bị
+  pixelRatio=Math.min(Math.max(window.devicePixelRatio||1,2),maxDpr);
   width=w;height=h;
   canvas.width=Math.round(w*pixelRatio);canvas.height=Math.round(h*pixelRatio);
   ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
