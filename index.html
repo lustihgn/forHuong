@@ -75,7 +75,7 @@ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294
 
 const particles=[],ringParticles=[],outerRingParticles=[],sphereDecorations=[],wishHitTargets=[];
 let ringDraw=[],outerDraw=[];   // danh sách hạt vành đai đã cắt theo chất lượng & sắp theo màu (đỡ đổi fillStyle liên tục)
-const particleCount=6500,ringCount=2000,outerRingCount=700,decorCount=180;
+const particleCount=6500,ringCount=2000,outerRingCount=700,decorCount=300;
 const RING_TILT=-.2,RING_BANDS=[[0,.26,.34],[.32,.6,.36],[.66,.7,.08],[.76,1,.22]];
 const RING_STOPS=[[255,205,222],[224,157,255],[142,190,255]];
 let pLimit=particleCount,rLimit=ringCount,oLimit=outerRingCount,sizeComp=1;
@@ -96,10 +96,10 @@ const FLOAT_RGB=[[255,190,235],[210,170,255],[255,255,255],[150,180,255]];
 const stars=Array.from({length:220},()=>({x:(random()-.5)*4.8,y:(random()-.5)*3.2,z:(random()-.5)*4.8,radius:.3+random()*.64,opacity:.35+random()*.4,tw:random()*Math.PI*2,drift:.000015+random()*.000035}));
 const projectedStars=stars.map(star=>({star,x:0,y:0,radius:0,a:0,depth:1}));
 
-const extraWishes=["Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.","Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.","Chúc mỗi ước mơ của bạn đều tìm được đường thành hiện thực.","Mong bạn luôn gặp những người khiến trái tim mình bình yên.","Hãy giữ nụ cười nhé — nó làm thế giới này sáng hơn nhiều.","Chúc bạn có thật nhiều khoảnh khắc nhỏ mà vui thật lâu.","Bạn đặc biệt hơn bạn nghĩ, và được thương nhiều hơn bạn biết.","Mong mọi điều tốt đẹp sẽ nhẹ nhàng tìm đến bên bạn."];
-const sphereWishes=["Luôn hạnh phúc","Mãi yêu thương","Bình an nhé","Luôn mỉm cười","May mắn mỗi ngày","Mãi bên nhau","Tràn đầy niềm vui","Yêu bạn nhiều","Mọi điều như ý","Ngọt ngào nhé","Thật nhiều yêu thương","Hạnh phúc dài lâu","Luôn rạng rỡ","Ước mơ thành hiện thực","Ấm áp mỗi ngày","Thương thật nhiều","Một đời bình yên","Niềm vui bất tận","Luôn được chở che","Mãi lung linh","Ngày mới thật vui","Luôn gặp điều tốt lành","Tự tin tỏa sáng","Bình yên trong tim","Mong bạn luôn được yêu","Nụ cười luôn nở","Ước mơ bay cao","Hạnh phúc quanh đây","Tỏa sáng theo cách riêng","Thành công rực rỡ","Mỗi ngày một niềm vui","Luôn vững tin nhé","Thật nhiều may mắn","Yêu đời và an yên","Mong điều lành ghé thăm","Rạng rỡ mỗi ngày","Luôn có người bên cạnh","Trái tim ngập nắng","Vạn điều như ý","Hạnh phúc nhé bạn"];
+const extraWishes=["Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.","Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.","Chúc mỗi ước mơ của bạn đều tìm được đường thành hiện thực.","Mong bạn luôn gặp những người khiến trái tim mình bình yên.","Hãy giữ nụ cười nhé — nó làm thế giới này sáng hơn nhiều.","Chúc bạn có thật nhiều khoảnh khắc nhỏ mà vui thật lâu.","Bạn đặc biệt hơn bạn nghĩ, và được thương nhiều hơn bạn biết.","Mong mọi điều tốt đẹp sẽ nhẹ nhàng tìm đến bên bạn.","Chúc bạn luôn đủ mạnh mẽ để theo đuổi điều mình yêu.","Mong những ngày bình thường cũng đem đến niềm vui thật đẹp.","Chúc trái tim bạn luôn ấm áp và bình yên.","Mỗi ngày mới là một cơ hội để bắt đầu điều tuyệt vời.","Mong bạn luôn tự hào về chính mình, dù chỉ là một bước nhỏ.","Chúc mọi cố gắng của bạn sớm nở thành quả ngọt.","Mong bạn gặp thật nhiều bất ngờ khiến mình mỉm cười.","Hãy tin rằng những điều tốt đẹp đang trên đường tìm đến bạn.","Chúc bạn luôn được lắng nghe, thấu hiểu và trân trọng.","Mong thanh xuân của bạn ngập tràn những kỷ niệm đáng nhớ.","Chúc bạn ngủ ngon, thức dậy vui và luôn có điều để mong chờ.","Dù ở đâu, mong bạn luôn tìm thấy một nơi gọi là bình yên."];
+const sphereWishes=["Luôn hạnh phúc","Mãi yêu thương","Bình an nhé","Luôn mỉm cười","May mắn mỗi ngày","Mãi bên nhau","Tràn đầy niềm vui","Yêu bạn nhiều","Mọi điều như ý","Ngọt ngào nhé","Thật nhiều yêu thương","Hạnh phúc dài lâu","Luôn rạng rỡ","Ước mơ thành hiện thực","Ấm áp mỗi ngày","Thương thật nhiều","Một đời bình yên","Niềm vui bất tận","Luôn được chở che","Mãi lung linh","Ngày mới thật vui","Luôn gặp điều tốt lành","Tự tin tỏa sáng","Bình yên trong tim","Mong bạn luôn được yêu","Nụ cười luôn nở","Ước mơ bay cao","Hạnh phúc quanh đây","Tỏa sáng theo cách riêng","Thành công rực rỡ","Mỗi ngày một niềm vui","Luôn vững tin nhé","Thật nhiều may mắn","Yêu đời và an yên","Mong điều lành ghé thăm","Rạng rỡ mỗi ngày","Luôn có người bên cạnh","Trái tim ngập nắng","Vạn điều như ý","Hạnh phúc nhé bạn","Luôn dịu dàng với mình","Thành công trên con đường bạn chọn","Mong nắng luôn ở trong tim","Hãy cứ là chính bạn","Bình yên sẽ tìm đến","Thêm một ngày thật đáng yêu","Mọi nỗ lực đều xứng đáng","Luôn được yêu thương","Rực rỡ theo cách riêng","Niềm vui ở quanh đây","Chúc bạn luôn an nhiên","Cùng nhau tạo kỷ niệm đẹp","Tương lai thật tươi sáng","Luôn tin vào điều kỳ diệu","Bạn xứng đáng với điều tốt nhất","Hạnh phúc từ những điều nhỏ","Mong ước mơ hóa thành sự thật","Mỗi ngày đều có phép màu","Trái tim luôn đầy hy vọng","Cười thật tươi nhé"];
 const SPHERE_RADIUS=72,RING_SQUASH=.2,RING_Y_OFFSET=4;
-const PALETTE={center:[255,174,218],edge:[151,105,255]};
+const PALETTE={center:[239,205,255],edge:[139,121,255]};
 
 /* ---- Thẻ lời nhắn ---- */
 const wishModal=document.getElementById("wishModal");
@@ -383,7 +383,7 @@ function sampleHeartPoint(){
   const depth=.08+.92*Math.pow(random(),1/5),p=heart(randomHeartT());
   return{x:p.x*depth,y:p.y*depth,depth};
 }
-const HEART_STOPS=[[255,225,235],[255,154,207],[165,112,255]];
+const HEART_STOPS=[[235,220,255],[211,151,255],[145,126,255]];
 const HEART_SIZE=.82; // thu nhỏ hình học, giữ nguyên kích thước hiển thị của từng hạt
 const heartSprites=[],heartSpriteMap=new Map();
 function heartSpriteFor(r,g,b){
@@ -403,14 +403,14 @@ function heartSpriteFor(r,g,b){
 function heartColor(depth){
   const t=Math.max(0,Math.min(1,depth+(random()-.5)*.14)),k=t*2,i=Math.min(1,Math.floor(k)),f=k-i,A=HEART_STOPS[i],B=HEART_STOPS[i+1];
   let r=A[0]+(B[0]-A[0])*f,g=A[1]+(B[1]-A[1])*f,bl=A[2]+(B[2]-A[2])*f;
-  if(random()<.16){r+=(255-r)*.5;g+=(150-g)*.5;bl+=(215-bl)*.5}
+  if(random()<.16){r+=(245-r)*.4;g+=(225-g)*.4;bl+=(255-bl)*.45}
   return[Math.round(r),Math.round(g),Math.round(bl)];
 }
 function createParticles(count){
   particles.length=0;
   for(let i=0;i<count;i++){
     const p=sampleHeartPoint(),a=random()*Math.PI*2,d=14+Math.pow(random(),.7)*34;
-    const glint=random()<.035,rgb=glint?[255,240,250]:heartColor(p.depth);
+    const glint=random()<.035,rgb=glint?[240,240,255]:heartColor(p.depth);
     particles.push({
       x:p.x,y:p.y,
       startX:Math.cos(a)*d,startY:Math.sin(a)*d,
@@ -439,7 +439,7 @@ function createRing(count){
   ringParticles.length=0;
   for(let i=0;i<count;i++){
     const band=pickRingBand(),u=band[0]+(band[1]-band[0])*Math.pow(random(),1.25);
-    const radius=23.5+u*13.5,star=random()<.028;
+    const radius=26+u*11,star=random()<.028;
     ringParticles.push({
       angle0:random()*Math.PI*2,radius,
       speed:Math.pow(30/radius,1.5),
@@ -468,11 +468,12 @@ function rebuildRingOrder(){
 }
 function createSphereDecorations(count){
   sphereDecorations.length=0;
-  const golden=Math.PI*(3-Math.sqrt(5));
+  const golden=Math.PI*(3-Math.sqrt(5)),wishCount=40;
   for(let i=0;i<count;i++){
     const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden,r=SPHERE_RADIUS*(.94+random()*.12);
-    const isWish=i%6===0;
-    sphereDecorations.push({id:i,x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
+    const wishIndex=Math.floor((i+1)*wishCount/count)-1;
+    const isWish=Math.floor((i+1)*wishCount/count)>Math.floor(i*wishCount/count);
+    sphereDecorations.push({id:i,x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[wishIndex%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
   }
 }
 
@@ -518,7 +519,7 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
     if(item.wish){
       const depthScale=.78+.62*p.clarity;
       const fs=Math.max(4,Math.min(7,scale*.95))*sp*depthScale,k=fs/20*1.4*(.7+.3*p.itemVis);
-      if(!backPass&&p.clarity>.3&&p.itemVis>.6)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*1.05,20),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
+      if(!backPass&&p.clarity>.3&&p.itemVis>.6)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*2.4,38),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
       const sprite=wishSprite(item.wish),dw=sprite.w*k,dh=sprite.h*k;
       ctx.shadowBlur=0;
       ctx.drawImage(sprite.c,p.x-dw/2,p.y-dh/2,dw,dh);
@@ -766,7 +767,7 @@ function draw(time){
   const ringVisible=smoother(revealT/.75);
   const grow=smoother(revealT);
   const formBuild=Math.min(1.2,sinceStart/3600);
-  const greetBuild=smoother((sinceStart-3800)/2200);
+  const greetBuild=smoother((sinceStart-4800)/2200);
 
   sphereSpinAngle+=.08*sec;
   sphereZoom+=(targetSphereZoom-sphereZoom)*(1-Math.exp(-7*sec));
@@ -788,12 +789,12 @@ function draw(time){
   const beat=Math.pow(Math.max(0,Math.sin(time*.0021)),2)*.85+Math.pow(Math.max(0,Math.sin(time*.0021-.55)),2)*.35;
   const pulse=1+beat*.045*(1-.5*retreat);
   const scale=Math.min(width,height)*(width<=600?.038:.0135)*.5*.45;
-  const zs=scale*sphereZoom*(.6+.4*grow),sphereScale=zs*1.2*1.3;
+  const zs=scale*sphereZoom*(.6+.4*grow),sphereScale=zs*1.2*1.3*.9;
   const ringScale=zs*(.45+.55*ringVisible);
-  const heartScale=scale*HEART_SIZE*1.18*1.2*.88*pulse*heartZoom,pulseExtra=(pulse-1)*.6;
+  const heartScale=scale*HEART_SIZE*1.18*1.2*.88*1.4*pulse*heartZoom,pulseExtra=(pulse-1)*.6;
   frameTime=time;
   ctx.globalCompositeOperation="lighter";
-  drawGlow(cx,cy,heartScale*24,.11*visible*(1+beat*.7)*(1-.55*retreat),150,80,255);
+  drawGlow(cx,cy,heartScale*24,.025*visible*(1+beat*.7),135,85,255);
   drawGlow(cx,cy,sphereScale*SPHERE_RADIUS*1.02,.13*grow*ringVisible*(1-.35*retreat),190,120,255);
   ctx.globalAlpha=1;
   ctx.globalCompositeOperation="source-over";
@@ -810,7 +811,7 @@ function draw(time){
     const p=particles[i];
     p.phase+=p.speed*fScale;
     const sparkle=(Math.sin(p.phase*1.7+time*.003)+1)*.16,twinkle=Math.max(0,Math.sin(p.phase*2.3+time*.005));
-    const amp=.35+p.radius*4;
+    const amp=.5+p.radius*5;
     const chX=Math.sin(time*.0016+p.phase*3.1)*amp,chY=Math.cos(time*.0013+p.phase*2.4)*amp;
     let x=p.x,y=p.y,arrive=1,sizeK=1;
     if(forming){
@@ -823,8 +824,8 @@ function draw(time){
       }
     }
     const scatter=smoother(retreat);
-    const particleFade=1-.72*scatter;
-    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.70*particleFade);
+    const particleFade=1;
+    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.32*particleFade);
     ctx.globalAlpha=al;
     const spread=heartScale*.1*scatter,dir=Math.hypot(x,y)||1;
     const px=cx+(x+x*pulseExtra)*heartScale+chX+x/dir*spread,py=cy+(y+y*pulseExtra)*heartScale+chY+y/dir*spread;
