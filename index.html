@@ -75,7 +75,7 @@ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294
 
 const particles=[],ringParticles=[],outerRingParticles=[],sphereDecorations=[],wishHitTargets=[];
 let ringDraw=[],outerDraw=[];   // danh sách hạt vành đai đã cắt theo chất lượng & sắp theo màu (đỡ đổi fillStyle liên tục)
-const particleCount=6500,ringCount=2000,outerRingCount=700,decorCount=240;
+const particleCount=6500,ringCount=2000,outerRingCount=700,decorCount=180;
 const RING_TILT=-.2,RING_BANDS=[[0,.26,.34],[.32,.6,.36],[.66,.7,.08],[.76,1,.22]];
 const RING_STOPS=[[255,196,236],[196,152,255],[120,170,255]];
 let pLimit=particleCount,rLimit=ringCount,oLimit=outerRingCount,sizeComp=1;
@@ -93,8 +93,8 @@ const floaters=[],shooters=[],ripples=[];
 let nextShooter=4500,spawnAcc=0,frameTime=0;
 const FLOAT_RGB=[[255,190,235],[210,170,255],[255,255,255],[150,180,255]];
 
-const stars=Array.from({length:220},()=>({x:(random()-.5)*4.8,y:(random()-.5)*3.2,z:(random()-.5)*4.8,radius:.38+random()*.72,opacity:.38+random()*.42,tw:random()*Math.PI*2}));
-const projectedStars=stars.map(star=>({star,x:0,y:0,radius:0,a:0}));
+const stars=Array.from({length:220},()=>({x:(random()-.5)*4.8,y:(random()-.5)*3.2,z:(random()-.5)*4.8,radius:.3+random()*.64,opacity:.35+random()*.4,tw:random()*Math.PI*2,drift:.000015+random()*.000035}));
+const projectedStars=stars.map(star=>({star,x:0,y:0,radius:0,a:0,depth:1}));
 
 const extraWishes=["Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.","Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.","Chúc mỗi ước mơ của bạn đều tìm được đường thành hiện thực.","Mong bạn luôn gặp những người khiến trái tim mình bình yên.","Hãy giữ nụ cười nhé — nó làm thế giới này sáng hơn nhiều.","Chúc bạn có thật nhiều khoảnh khắc nhỏ mà vui thật lâu.","Bạn đặc biệt hơn bạn nghĩ, và được thương nhiều hơn bạn biết.","Mong mọi điều tốt đẹp sẽ nhẹ nhàng tìm đến bên bạn."];
 const sphereWishes=["Luôn hạnh phúc","Mãi yêu thương","Bình an nhé","Luôn mỉm cười","May mắn mỗi ngày","Mãi bên nhau","Tràn đầy niềm vui","Yêu bạn nhiều","Mọi điều như ý","Ngọt ngào nhé","Thật nhiều yêu thương","Hạnh phúc dài lâu","Luôn rạng rỡ","Ước mơ thành hiện thực","Ấm áp mỗi ngày","Thương thật nhiều","Một đời bình yên","Niềm vui bất tận","Luôn được chở che","Mãi lung linh","Ngày mới thật vui","Luôn gặp điều tốt lành","Tự tin tỏa sáng","Bình yên trong tim","Mong bạn luôn được yêu","Nụ cười luôn nở","Ước mơ bay cao","Hạnh phúc quanh đây","Tỏa sáng theo cách riêng","Thành công rực rỡ","Mỗi ngày một niềm vui","Luôn vững tin nhé","Thật nhiều may mắn","Yêu đời và an yên","Mong điều lành ghé thăm","Rạng rỡ mỗi ngày","Luôn có người bên cạnh","Trái tim ngập nắng","Vạn điều như ý","Hạnh phúc nhé bạn"];
@@ -318,14 +318,16 @@ function drawSpaceBackground(time,bgFade){
   ctx.globalAlpha=1;
   if(bgFade>=.999)ctx.drawImage(bgFull,0,0,width,height);   // 1 lần vẽ duy nhất (nền + tinh vân + vignette)
   else{ctx.drawImage(bgBase,0,0,width,height);if(bgFade>.002){ctx.globalAlpha=bgFade;ctx.drawImage(bgNeb,0,0,width,height)}}
-  const cx=width/2,cy=height/2-height*.05,S=Math.min(width,height),focal=S*5.2;
+  const cx=width/2,cy=height/2-height*.05,S=Math.min(width,height),focal=S*4.2;
   const cY=Math.cos(cameraYaw),sY=Math.sin(cameraYaw),cP=Math.cos(cameraPitch),sP=Math.sin(cameraPitch);
   const vX=sY*cP,vY=sP,vZ=cY*cP,rX=cY,rZ=-sY,uX=-sY*sP,uY=cP,uZ=-cY*sP;
   for(const p of projectedStars){
-    const s=p.star,wx=s.x*S,wy=s.y*S,wz=s.z*S;
+    const s=p.star,drift=Math.sin(time*s.drift+s.tw)*S*.012,wx=s.x*S+drift,wy=s.y*S+drift*.45,wz=s.z*S;
     const persp=focal/(focal-(wx*vX+wy*vY+wz*vZ));
-    p.x=cx+(wx*rX+wz*rZ)*persp;p.y=cy+(wx*uX+wy*uY+wz*uZ)*persp;p.radius=s.radius*persp;
-    p.a=s.opacity*(.86+.14*Math.sin(time*.0011+s.tw))*bgFade;
+    const depth=clamp01((persp-.55)/1.35);
+    p.x=cx+(wx*rX+wz*rZ)*persp;p.y=cy+(wx*uX+wy*uY+ wz*uZ)*persp;
+    p.depth=depth;p.radius=s.radius*persp*(.72+.45*depth);
+    p.a=s.opacity*(.72+.28*depth)*(.82+.18*Math.sin(time*.0011+s.tw))*bgFade;
   }
   ctx.fillStyle="#9ebcff";                       // quầng chỉ cho sao lớn
   for(const p of projectedStars){
@@ -451,7 +453,7 @@ function createSphereDecorations(count){
   for(let i=0;i<count;i++){
     const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden,r=SPHERE_RADIUS*(.94+random()*.12);
     const isWish=i%6===0;
-    sphereDecorations.push({x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
+    sphereDecorations.push({id:i,x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.6});
   }
 }
 
@@ -466,13 +468,15 @@ function updateSpin(){
   }
 }
 const sphereList=[],spherePool=[];
-function drawSpherePass(cx,cy,scale,time,backPass,reveal){
+function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
   if(!backPass)wishHitTargets.length=0;
   const cY=Math.cos(cameraYaw),sY=Math.sin(cameraYaw),cP=Math.cos(cameraPitch),sP=Math.sin(cameraPitch);
   const camDist=SPHERE_RADIUS*3.6,vX=sY*cP,vY=sP,vZ=cY*cP,rX=cY,rZ=-sY,uX=-sY*sP,uY=cP,uZ=-cY*sP;
   const FAR_MIN=.13;
   const list=sphereList;list.length=0;
+  const sphereBrightness=1-.28*retreat;
   for(const item of sphereDecorations){
+    if(retreat>.45&&!item.wish&&(item.id&1))continue;
     const itemVis=smoother((reveal*1.35-item.delay)/.7);
     if(itemVis<=.001)continue;
     let x=item.sx,y=item.sy,z=item.sz;
@@ -482,7 +486,7 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal){
     const clarity=FAR_MIN+(1-FAR_MIN)*Math.pow(smooth((front+.35)/1.2),1.3);
     const persp=camDist/(camDist-dv);
     const o=spherePool[list.length]||(spherePool[list.length]={});
-    o.item=item;o.x=cx+(x*rX+z*rZ)*scale*persp;o.y=cy+(x*uX+y*uY+z*uZ)*scale*persp;o.depth=camDist-dv;o.persp=persp;o.front=front;o.clarity=clarity;o.itemVis=itemVis;o.alpha=item.opacity*itemVis*clarity;
+    o.item=item;o.x=cx+(x*rX+z*rZ)*scale*persp;o.y=cy+(x*uX+y*uY+z*uZ)*scale*persp;o.depth=camDist-dv;o.persp=persp;o.front=front;o.clarity=clarity;o.itemVis=itemVis;o.alpha=item.opacity*itemVis*clarity*sphereBrightness;
     list.push(o);
   }
   list.sort((a,b)=>b.depth-a.depth);
@@ -551,7 +555,7 @@ function drawRingPass(g,cx,cy,scale,visible,time,backPass,list){
 let ringLayers=null,ringCap=0,ringLScale=0,ringLVis=-1,ringLTime=-1e9;
 function ensureRingLayers(ringScale,ringVisible,time){
   const px=pixelRatio;
-  if(ringLayers&&ringLayers.px===px&&Math.abs(ringScale-ringLScale)<ringScale*.004&&Math.abs(ringVisible-ringLVis)<.01&&time-ringLTime<32)return;
+  if(ringLayers&&ringLayers.px===px&&Math.abs(ringScale-ringLScale)<ringScale*.004&&Math.abs(ringVisible-ringLVis)<.01&&time-ringLTime<60)return;
   const need=Math.ceil(2*54*ringScale);
   if(!ringLayers||need>ringCap||ringLayers.px!==px){
     ringCap=Math.ceil(need*1.2);
@@ -606,7 +610,7 @@ function drawGreeting(cx,cy,heartScale,visible,retreat,greetBuild){
 
 /* ---- Hiệu ứng nâng cao ---- */
 function spawnFloater(x,y,vx,vy,life,size,drag){
-  if(floaters.length>=100)floaters.shift();
+  if(floaters.length>=60)floaters.shift();
   floaters.push({x,y,vx,vy,age:0,life,size,drag,rgb:FLOAT_RGB[(Math.random()*FLOAT_RGB.length)|0],tw:Math.random()*6.283});
 }
 /* Quầng sáng: dùng sprite gradient tạo sẵn thay vì tạo gradient mới mỗi khung */
@@ -631,7 +635,7 @@ function drawGlow(cx,cy,radius,alpha,r,g,b){
 }
 function drawFx(sec,time,cx,cy,heartScale,visible,grow){
   const TAU=Math.PI*2;
-  spawnAcc+=14*visible*(1-.75*grow)*(quality===0?.4:1)*sec;
+  spawnAcc+=8*visible*(1-.75*grow)*(quality===0?.4:1)*sec;
   while(spawnAcc>=1){
     spawnAcc--;
     const p=heart(randomHeartT()),k=1.02+Math.random()*.1;
@@ -652,7 +656,7 @@ function drawFx(sec,time,cx,cy,heartScale,visible,grow){
   }
   nextShooter-=sec*1000;
   if(nextShooter<=0&&visible>.9){
-    nextShooter=5000+Math.random()*6500;
+    nextShooter=8000+Math.random()*7000;
     const ang=(18+Math.random()*22)*Math.PI/180,dir=Math.random()<.5?1:-1;
     shooters.push({x:dir>0?Math.random()*width*.45:width-Math.random()*width*.45,y:Math.random()*height*.35,vx:Math.cos(ang)*dir,vy:Math.sin(ang),speed:520+Math.random()*300,age:0,life:.8+Math.random()*.4,len:90+Math.random()*80});
   }
@@ -683,8 +687,8 @@ let quality=2;   // 2 = đẹp nhất, 0 = nhẹ nhất; tự hạ dần nếu m
 function applyQuality(){
   pLimit=particleCount;   // trái tim luôn đủ hạt, không bị giảm theo chất lượng
   if(quality===2){rLimit=ringCount;oLimit=outerRingCount;sizeComp=1}
-  else if(quality===1){rLimit=1300;oLimit=450;sizeComp=1.08}
-  else{rLimit=800;oLimit=300;sizeComp=1.18}
+  else if(quality===1){rLimit=1000;oLimit=320;sizeComp=1.08}
+  else{rLimit=550;oLimit=180;sizeComp=1.18}
   shadowEnabled=false;
   rebuildRingOrder();
   resize();
@@ -700,15 +704,15 @@ function resize(){
   buildBgCache();
 }
 /* Đo FPS: hạ chất lượng khi < ~45fps; đo lại từ đầu khi bắt đầu giai đoạn nặng */
-let perfAcc=0,perfFrames=0,perfWarmup=120;
+let perfAcc=0,perfFrames=0,perfWarmup=45;
 function resetPerf(warm){perfAcc=0;perfFrames=0;perfWarmup=warm}
 function trackPerf(delta){
   if(delta>200)return;
   if(perfWarmup>0){perfWarmup--;return}
   perfAcc+=delta;
-  if(++perfFrames<45)return;
+  if(++perfFrames<30)return;
   const avg=perfAcc/perfFrames;perfAcc=0;perfFrames=0;
-  if(avg>22&&quality>0){quality--;applyQuality();perfWarmup=45}
+  if(avg>22&&quality>0){quality--;applyQuality();perfWarmup=20}
 }
 
 /* ---- Vòng lặp chính ---- */
@@ -731,7 +735,7 @@ function draw(time){
   const bgFade=smoother(sinceStart/1400);
   const retreat=transClock<0?0:smoother(transClock/3200);
   const greetOut=transClock<0?0:clamp01(transClock/900);
-  const heartZoom=2.2-1.2*retreat;
+  const heartZoom=2.2-1.26*retreat;
   const revealT=transClock<0?0:clamp01((transClock-700)/7000);
   const ringVisible=smoother(revealT/.75);
   const grow=smoother(revealT);
@@ -764,12 +768,12 @@ function draw(time){
   frameTime=time;
   ctx.globalCompositeOperation="lighter";
   drawGlow(cx,cy,heartScale*24,.11*visible*(1+beat*.7)*(1-.55*retreat),150,80,255);
-  drawGlow(cx,cy,sphereScale*SPHERE_RADIUS*1.02,.13*grow*ringVisible,190,120,255);
+  drawGlow(cx,cy,sphereScale*SPHERE_RADIUS*1.02,.13*grow*ringVisible*(1-.35*retreat),190,120,255);
   ctx.globalAlpha=1;
   ctx.globalCompositeOperation="source-over";
   if(ringVisible>0){
     updateSpin();
-    drawSpherePass(cx,cy,sphereScale,time,true,revealT);
+    drawSpherePass(cx,cy,sphereScale,time,true,revealT,retreat);
     ensureRingLayers(ringScale,ringVisible,time);
     drawRingLayer(cx,cy,true);
   }
@@ -792,10 +796,12 @@ function draw(time){
         arrive=smooth(s*2.2);sizeK=.55+.45*s;
       }
     }
-    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.70);
+    const particleFade=1-.35*retreat;
+    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.70*particleFade);
     ctx.globalAlpha=al;
     const px=cx+(x+x*pulseExtra)*heartScale+chX,py=cy+(y+y*pulseExtra)*heartScale+chY;
-    const pr=Math.max(.62,p.radius*heartScale*sizeK*(1+twinkle*.35));
+    const minParticleRadius=.62*(1-.55*retreat);
+    const pr=Math.max(minParticleRadius,p.radius*heartScale*sizeK*(1+twinkle*.35));
     if(pr<.95){if(p.color!==lastFill){ctx.fillStyle=p.color;lastFill=p.color}ctx.fillRect(px-pr,py-pr,pr*2,pr*2)}
     else{const dd=pr*3.8;ctx.drawImage(heartSprites[p.si],px-dd/2,py-dd/2,dd,dd)}
     if(p.glint&&twinkle>.3&&arrive>.9){
@@ -807,7 +813,7 @@ function draw(time){
   ctx.globalCompositeOperation="source-over";
   if(ringVisible>0){
     drawRingLayer(cx,cy,false);
-    drawSpherePass(cx,cy,sphereScale,time,false,revealT);
+    drawSpherePass(cx,cy,sphereScale,time,false,revealT,retreat);
   }
   drawFx(sec,time,cx,cy,heartScale,visible,grow);
   drawGreeting(cx,cy,heartScale,visible,greetOut,greetBuild);
@@ -857,7 +863,7 @@ canvas.addEventListener("pointerup",e=>{
   if(!dragPointer.moved){
     if(transitionStartTime===null){
       transitionStartTime=performance.now();transClock=0;
-      resetPerf(60);   // giai đoạn quả cầu nặng hơn: đo FPS lại từ đầu để tự hạ chất lượng sớm nếu cần
+      resetPerf(25);   // nhanh chóng đo và hạ tải hiệu ứng phụ nếu thiết bị chậm
     }else{
       const rect=canvas.getBoundingClientRect();
       const px=e.clientX-rect.left,py=e.clientY-rect.top;
