@@ -106,20 +106,28 @@
     }, { once: true });
     const particles = [];
 
+    // Dùng bộ sinh số ngẫu nhiên có seed để bố cục hạt giống nhau mỗi lần mở.
+    let randomSeed = 20241020;
+    function random() {
+      randomSeed = (Math.imul(randomSeed, 1664525) + 1013904223) >>> 0;
+      return randomSeed / 4294967296;
+    }
+
     // Giữ mật độ hiệu ứng vừa phải để hoạt ảnh nhẹ hơn trên điện thoại.
     const PARTICLE_COUNT = 3000;
     const RING_COUNT = 1200;
     const OUTER_RING_COUNT = 550;
     const STAR_COUNT = 220;
     let lastFrameTime = 0;
+    let hiddenAt = null;
 
     const stars = Array.from({ length: STAR_COUNT }, () => ({
-      x: (Math.random() - 0.5) * 4.8,
-      y: (Math.random() - 0.5) * 3.2,
-      z: (Math.random() - 0.5) * 4.8,
-      radius: 0.38 + Math.random() * 0.72,
-      opacity: 0.38 + Math.random() * 0.42,
-      phase: Math.random() * Math.PI * 2
+      x: (random() - 0.5) * 4.8,
+      y: (random() - 0.5) * 3.2,
+      z: (random() - 0.5) * 4.8,
+      radius: 0.38 + random() * 0.72,
+      opacity: 0.38 + random() * 0.42,
+      phase: random() * Math.PI * 2
     }));
     // Mảng chiếu sao được cấp phát một lần, tái sử dụng mỗi khung hình (tránh GC do tạo mảng mới liên tục)
     const projectedStars = stars.map(star => ({ star, x: 0, y: 0, radius: 0, depth: 0 }));
@@ -301,14 +309,14 @@
 
     function sampleHeartPoint() {
       while (true) {
-        const angle = Math.random() * Math.PI * 2;
+        const angle = random() * Math.PI * 2;
         // Chừa lõi rỗng nhỏ để trái tim có cảm giác viền hạt.
-        const depth = 0.22 + Math.pow(Math.random(), 0.18) * 0.78;
+        const depth = 0.22 + Math.pow(random(), 0.18) * 0.78;
         const point = heart(angle);
         const x = point.x * depth;
         const y = point.y * depth;
         const centerBias = Math.abs(x);
-        if (Math.random() > Math.min(1, Math.pow(centerBias, 0.85))) continue;
+        if (random() > Math.min(1, Math.pow(centerBias, 0.85))) continue;
         return { x, y, depth };
       }
     }
@@ -320,8 +328,8 @@
         // Vị trí bắt đầu ngẫu nhiên ngoài rìa để bay hội tụ vào hình tim lúc mở trang.
         // Khi dựng lại giữa chừng (hạ cấp chất lượng), đặt thẳng vào vị trí cuối
         // (instant=true) để không bị "bay vào" lại gây giật mắt.
-        const startAngle = Math.random() * Math.PI * 2;
-        const startDist = 60 + Math.random() * 40;
+        const startAngle = random() * Math.PI * 2;
+        const startDist = 60 + random() * 40;
         particles.push({
           x: point.x,
           y: point.y,
@@ -331,9 +339,9 @@
           color: mixColor(point.depth),
           radius: 0.03 + point.depth * 0.065,
           opacity: 0.65 + point.depth * 0.35,
-          phase: Math.random() * Math.PI * 2,
-          speed: 0.006 + Math.random() * 0.01,
-          arrive: 0.4 + Math.random() * 0.6 // thời điểm (0..1 của formBuild) hạt này "đến nơi"
+          phase: random() * Math.PI * 2,
+          speed: 0.006 + random() * 0.01,
+          arrive: 0.4 + random() * 0.6 // thời điểm (0..1 của formBuild) hạt này "đến nơi"
         });
       }
     }
@@ -361,15 +369,15 @@
     function createRing(count = RING_COUNT) {
       ringParticles.length = 0;
       for (let i = 0; i < count; i++) {
-        const centerBiasT = Math.pow(Math.random(), 2.2);
+        const centerBiasT = Math.pow(random(), 2.2);
         const radius = (18.282 + centerBiasT * 9.898) * 1.3;
         const edgeFade = 1 - centerBiasT;
         ringParticles.push({
-          angle0: Math.random() * Math.PI * 2,
+          angle0: random() * Math.PI * 2,
           radius,
-          size: 0.09 + Math.random() * 0.12,
-          opacity: (0.95 + Math.random() * 0.05) * edgeFade,
-          color: mixColor(Math.random())
+          size: 0.09 + random() * 0.12,
+          opacity: (0.95 + random() * 0.05) * edgeFade,
+          color: mixColor(random())
         });
       }
     }
@@ -377,13 +385,13 @@
     function createOuterRing(count = OUTER_RING_COUNT) {
       outerRingParticles.length = 0; // (trước đây thiếu dòng này — sẽ nhân đôi hạt nếu gọi lại)
       for (let i = 0; i < count; i++) {
-        const outward = Math.pow(Math.random(), 0.55);
+        const outward = Math.pow(random(), 0.55);
         outerRingParticles.push({
-          angle0: Math.random() * Math.PI * 2,
+          angle0: random() * Math.PI * 2,
           radius: 42 + outward * 4,
           size: 0.03 + outward * 0.07,
           opacity: 0.55 + outward * 0.45,
-          color: mixColor(Math.random())
+          color: mixColor(random())
         });
       }
     }
@@ -395,7 +403,7 @@
         const y = 1 - 2 * (i + 0.5) / count;
         const ringRadius = Math.sqrt(1 - y * y);
         const angle = i * goldenAngle;
-        const radius = SPHERE_RADIUS * (0.94 + Math.random() * 0.12);
+        const radius = SPHERE_RADIUS * (0.94 + random() * 0.12);
         const isWish = i % 6 === 0;
         const butterfly = !isWish && i % 18 === 2;
         const sparkle = !isWish && i % 18 === 8;
@@ -408,8 +416,8 @@
           butterfly,
           sparkle,
           heart,
-          phase: Math.random() * Math.PI * 2,
-          opacity: 0.72 + Math.random() * 0.28
+          phase: random() * Math.PI * 2,
+          opacity: 0.72 + random() * 0.28
         });
       }
     }
@@ -671,7 +679,8 @@
     }
 
     function resize() {
-      pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25); // giới hạn độ phân giải để giảm tải vẽ yếu
+      // Giảm tải raster trên điện thoại nhưng giữ nguyên số lượng và kích thước hạt.
+      pixelRatio = Math.min(window.devicePixelRatio || 1, window.innerWidth <= 600 ? 1 : 1.25);
       width = canvas.clientWidth;
       height = canvas.clientHeight;
       canvas.width = width * pixelRatio;
@@ -875,6 +884,21 @@
       targetSphereZoom = Math.max(0.65, Math.min(1.8, targetSphereZoom * Math.exp(-event.deltaY * 0.001)));
       lastInteractionTime = performance.now();
     }, { passive: false });
+    // Giữ nguyên tiến trình hoạt ảnh khi tab bị tạm dừng ở nền trên điện thoại.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        hiddenAt = performance.now();
+        return;
+      }
+      if (hiddenAt === null) return;
+      const pausedFor = performance.now() - hiddenAt;
+      if (animationStartTime !== null) animationStartTime += pausedFor;
+      if (transitionStartTime !== null) transitionStartTime += pausedFor;
+      lastInteractionTime += pausedFor;
+      lastFrameTime = 0;
+      hiddenAt = null;
+    });
+
     document.getElementById("wishClose").addEventListener("click", closeWish);
     wishModal.addEventListener("click", (event) => {
       if (event.target === wishModal) closeWish();
