@@ -110,6 +110,7 @@ function openWish(item){
 function closeWish(){wishModal.classList.remove("open");wishModal.setAttribute("aria-hidden","true")}
 
 const ease=t=>t*t*(3-2*t);
+const smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
 
 /* ---- Biểu tượng tự vẽ (không phụ thuộc font/emoji) ---- */
 function fillSparkle(x,y,r){
@@ -125,7 +126,7 @@ function fillHeart(x,y,s){
   ctx.fill();
 }
 function drawButterfly(x,y,size,time,phase){
-  const flap=Math.sin(time*.006+phase)*.32;
+  const flap=Math.sin(time*.004+phase)*.22;
   ctx.save();ctx.translate(x,y);ctx.scale(size/16,size/16);
   for(const side of[-1,1]){
     ctx.save();ctx.scale(side,1);ctx.scale(.68,1.35);ctx.rotate(flap);
@@ -206,7 +207,7 @@ function createSphereDecorations(count){
   for(let i=0;i<count;i++){
     const y=1-2*(i+.5)/count,rr=Math.sqrt(1-y*y),a=i*golden,r=SPHERE_RADIUS*(.94+random()*.12);
     const isWish=i%6===0;
-    sphereDecorations.push({x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28});
+    sphereDecorations.push({x:Math.cos(a)*rr*r,y:y*r,z:Math.sin(a)*rr*r,wish:isWish?sphereWishes[(i/6)%sphereWishes.length]:null,butterfly:!isWish&&i%18===2,sparkle:!isWish&&i%18===8,heart:!isWish&&i%18===14,phase:random()*Math.PI*2,opacity:.72+random()*.28,delay:random()*.55});
   }
 }
 
@@ -215,43 +216,46 @@ function spinVector(x,y,z){
   const c=Math.cos(sphereSpinAngle),s=Math.sin(sphereSpinAngle),ax=.65,ay=-.65,az=.39,dot=x*ax+y*ay+z*az;
   return[x*c+(ay*z-az*y)*s+ax*dot*(1-c),y*c+(az*x-ax*z)*s+ay*dot*(1-c),z*c+(ax*y-ay*x)*s+az*dot*(1-c)];
 }
-function drawSpherePass(cx,cy,scale,visible,time,backPass){
+function drawSpherePass(cx,cy,scale,time,backPass,reveal){
   if(!backPass)wishHitTargets.length=0;
   const cY=Math.cos(cameraYaw),sY=Math.sin(cameraYaw),cP=Math.cos(cameraPitch),sP=Math.sin(cameraPitch);
   const camDist=SPHERE_RADIUS*3.6,vX=sY*cP,vY=sP,vZ=cY*cP,rX=cY,rZ=-sY,uX=-sY*sP,uY=cP,uZ=-cY*sP;
   const list=[];
   for(const item of sphereDecorations){
+    const itemVis=smooth((reveal-item.delay)/.45);      // từng chữ hiện dần, lệch nhau
+    if(itemVis<=.001)continue;
     const[x,y,z]=spinVector(item.x,item.y,item.z);
     const dv=x*vX+y*vY+z*vZ,front=dv/SPHERE_RADIUS;
     if((front<0)!==backPass)continue;
+    const clarity=Math.pow(smooth((front+.35)/1.2),1.3); // xa thì mờ hẳn, liên tục, không nhấp nháy
+    if(clarity<.01)continue;
     const persp=camDist/(camDist-dv);
-    list.push({item,x:cx+(x*rX+z*rZ)*scale*persp,y:cy+(x*uX+y*uY+z*uZ)*scale*persp,depth:camDist-dv,persp,front:Math.max(-1,Math.min(1,front))});
+    list.push({item,x:cx+(x*rX+z*rZ)*scale*persp,y:cy+(x*uX+y*uY+z*uZ)*scale*persp,depth:camDist-dv,persp,front,clarity,alpha:item.opacity*itemVis*clarity});
   }
   list.sort((a,b)=>b.depth-a.depth);
   ctx.textAlign="center";ctx.textBaseline="middle";
   for(const p of list){
-    const item=p.item,clarity=ease((p.front+1)/2),sp=p.persp**2;
-    ctx.globalAlpha=item.opacity*visible*clarity;
+    const item=p.item,sp=p.persp**2,glow=p.clarity;
+    ctx.globalAlpha=p.alpha;
     if(item.wish){
-      const fs=Math.max(6,Math.min(9,scale*1.05))*sp;
-      if(!backPass)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*.85,18),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
-      ctx.font=`600 ${fs}px Arial,Helvetica,sans-serif`;
+      const fs=Math.max(6,Math.min(9,scale*1.05))*sp,k=fs/20;
+      if(!backPass&&p.clarity>.3)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*.85,18),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
+      ctx.font='600 20px Arial,Helvetica,sans-serif';   // cỡ chữ cố định + scale => chữ nhỏ không rung
       ctx.fillStyle="#ffe2f2";ctx.shadowColor="#ff5eb8";
-      ctx.shadowBlur=shadowEnabled?(5+p.front*7)*sp:0;
-      ctx.fillText(item.wish,p.x,p.y);
+      ctx.shadowBlur=shadowEnabled?(5+Math.max(0,p.front)*7)*sp*glow:0;
+      ctx.save();ctx.translate(p.x,p.y);ctx.scale(k,k);ctx.fillText(item.wish,0,0);ctx.restore();
     }else if(item.butterfly){
       const size=Math.max(9,Math.min(13,scale*1.5))*sp*.65;
-      ctx.shadowColor="#e18bff";ctx.shadowBlur=shadowEnabled?size*(1.2+Math.max(0,p.front)*.9):0;
+      ctx.shadowColor="#e18bff";ctx.shadowBlur=shadowEnabled?size*(1.2+Math.max(0,p.front)*.9)*glow:0;
       drawButterfly(p.x,p.y,size,time,item.phase);
     }else if(item.sparkle){
       const size=Math.max(10,Math.min(15,scale*1.6))*sp;
-      ctx.globalAlpha*=.78+(Math.sin(time*.003+item.phase)+1)*.11;
       ctx.fillStyle="#fff0ff";ctx.shadowColor="#c69aff";
-      ctx.shadowBlur=shadowEnabled?size*(1.3+Math.max(0,p.front)*1.1):0;
+      ctx.shadowBlur=shadowEnabled?size*(1.3+Math.max(0,p.front)*1.1)*glow:0;
       fillSparkle(p.x,p.y,size*.5);
     }else if(item.heart){
       const size=Math.max(8,Math.min(12,scale*1.3))*sp;
-      ctx.fillStyle="#ff9bd8";ctx.shadowColor="#ff42b0";ctx.shadowBlur=shadowEnabled?size*.9:0;
+      ctx.fillStyle="#ff9bd8";ctx.shadowColor="#ff42b0";ctx.shadowBlur=shadowEnabled?size*.9*glow:0;
       fillHeart(p.x,p.y,size*.5);
     }
   }
@@ -338,7 +342,9 @@ function draw(time){
   const visible=ease(build);
   const retreat=transitionStartTime===null?0:Math.max(0,Math.min(1,(time-transitionStartTime)/2000));
   const heartZoom=2.2-1.2*ease(retreat);
-  const ringVisible=transitionStartTime===null?0:ease(Math.max(0,Math.min(1,(time-transitionStartTime-1650)/2600)));
+  const revealT=transitionStartTime===null?0:Math.max(0,Math.min(1,(time-transitionStartTime-900)/3600));
+  const ringVisible=smooth(revealT/.8);
+  const grow=1-Math.pow(1-revealT,3);
   const formBuild=Math.min(1,(time-animationStartTime)/2600);
   const greetBuild=ease(Math.max(0,Math.min(1,(time-animationStartTime-2600)/700)));
   sphereSpinAngle+=.08*sec;
@@ -351,11 +357,11 @@ function draw(time){
   const beat=Math.pow(Math.max(0,Math.sin(time*.0021)),2)*.85+Math.pow(Math.max(0,Math.sin(time*.0021-.55)),2)*.35;
   const pulse=1+beat*.045;
   const scale=Math.min(width,height)*(width<=600?.038:.0135)*.5*.45;
-  const zs=scale*sphereZoom,sphereScale=zs*1.2*1.3;
+  const zs=scale*sphereZoom*(.72+.28*grow),sphereScale=zs*1.2*1.3;
   const heartScale=scale*1.18*1.2*.88*pulse*heartZoom,pulseExtra=(pulse-1)*.6;
   ctx.globalCompositeOperation="source-over";
   if(ringVisible>0){
-    drawSpherePass(cx,cy,sphereScale,ringVisible,time,true);
+    drawSpherePass(cx,cy,sphereScale,time,true,revealT);
     drawRingPass(cx,cy,zs,ringVisible,time,true,outerRingParticles);
     drawRingPass(cx,cy,zs,ringVisible,time,true);
   }
@@ -375,7 +381,7 @@ function draw(time){
   if(ringVisible>0){
     drawRingPass(cx,cy,zs,ringVisible,time,false);
     drawRingPass(cx,cy,zs,ringVisible,time,false,outerRingParticles);
-    drawSpherePass(cx,cy,sphereScale,ringVisible,time,false);
+    drawSpherePass(cx,cy,sphereScale,time,false,revealT);
   }
   drawGreeting(cx,cy,heartScale,visible,retreat,greetBuild);
   ctx.globalAlpha=1;
