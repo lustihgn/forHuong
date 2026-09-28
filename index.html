@@ -17,6 +17,10 @@
       display: block;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
+    }
+    @supports (height: 100dvh) {
+      html, body { height: 100dvh; }
     }
     .wish-modal {
       position: fixed;
@@ -668,8 +672,8 @@
 
     function resize() {
       pixelRatio = Math.min(window.devicePixelRatio || 1, 1.25); // giới hạn độ phân giải để giảm tải vẽ yếu
-      width = window.innerWidth;
-      height = window.innerHeight;
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
       canvas.width = width * pixelRatio;
       canvas.height = height * pixelRatio;
       ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -880,17 +884,12 @@
     });
 
     resize();
-    if (width <= 600) {
-      particleCount = Math.round(PARTICLE_COUNT * 0.55);
-      ringCount = Math.round(RING_COUNT * 0.55);
-      outerRingCount = Math.round(OUTER_RING_COUNT * 0.55);
-      decorCount = Math.round(240 * 0.7);
-    }
     createParticles(particleCount);
     createRing(ringCount);
     createOuterRing(outerRingCount);
     createSphereDecorations(decorCount);
     window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
     requestAnimationFrame(draw);
   </script>
 </body>
