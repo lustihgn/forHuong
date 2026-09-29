@@ -11,6 +11,7 @@
 :root{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000208}
 canvas{display:block;width:100%;height:100%;touch-action:none;filter:brightness(1.08)}
+.greeting-label{position:fixed;z-index:1;left:0;top:0;pointer-events:none;white-space:nowrap;color:#f7efff;font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-weight:600;font-style:italic;text-shadow:0 0 8px rgba(190,160,255,.85),0 0 22px rgba(145,105,255,.72);will-change:transform,opacity}
 .wish-modal{position:fixed;inset:0;z-index:2;display:grid;place-items:center;padding:22px;background:rgba(2,5,20,.72);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s cubic-bezier(.22,.8,.24,1),visibility .35s}
 .wish-modal.open{opacity:1;visibility:visible}
 .wish-card{position:relative;width:min(360px,100%);max-height:calc(100dvh - 44px);overflow-y:auto;border:1px solid rgba(255,177,224,.45);border-radius:24px;color:#fff2fa;text-align:center;background:linear-gradient(155deg,#24133d,#10152d 68%,#261333);box-shadow:0 18px 70px rgba(255,66,176,.28);opacity:0;transform:translateY(22px) scale(.94);transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease;will-change:transform,opacity}
@@ -37,6 +38,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none;filter:brightness(
 </head>
 <body>
 <canvas id="heartCanvas"></canvas>
+<div class="greeting-label" id="greetingLabel" aria-hidden="true">Happy 20-10</div>
 <audio id="backgroundMusic" src="music.mp3" preload="auto" loop></audio>
 <div class="wish-modal" id="wishModal" aria-hidden="true">
   <section class="wish-card" role="dialog" aria-modal="true" aria-labelledby="wishTitle">
@@ -602,35 +604,19 @@ function drawRingLayer(cx,cy,back){
 }
 
 /* ---- Lời chúc ---- */
+const greetingLabel=document.getElementById("greetingLabel");
 function drawGreeting(cx,cy,heartScale,visible,retreat,greetBuild){
   const enter=smoother(greetBuild),exit=smoother(retreat);
   const fade=visible*enter*(1-exit);
-  if(fade<=.001)return;
-  const fs=Math.min(52,Math.max(24,width*.085)),text="Happy 20-10";
+  const fs=Math.min(52,Math.max(24,width*.085));
   const rise=(1-enter)*fs*.45;
   const textY=cy-heartScale*20-fs*1.6+rise;
   const scale=.9+.1*enter;
-  ctx.save();
-  ctx.globalAlpha=fade;
-  ctx.translate(cx,textY);
-  ctx.scale(scale,scale);
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.font=`italic 600 ${fs}px ${SCRIPT_FONT}`;
-  const tw=ctx.measureText(text).width;
-  ctx.lineJoin="round";
-  ctx.lineWidth=Math.max(2,fs*.07);
-  ctx.strokeStyle="rgba(23,12,57,.9)";
-  ctx.strokeText(text,0,0);
-  ctx.shadowColor="#9b72ff";
-  ctx.shadowBlur=fs*.4;
-  const gradient=ctx.createLinearGradient(-tw/2,0,tw/2,0);
-  gradient.addColorStop(0,"#c6b7ff");
-  gradient.addColorStop(.5,"#ffffff");
-  gradient.addColorStop(1,"#d7c4ff");
-  ctx.fillStyle=gradient;
-  ctx.fillText(text,0,0);
-  ctx.restore();
+  greetingLabel.style.left=`${cx}px`;
+  greetingLabel.style.top=`${textY}px`;
+  greetingLabel.style.fontSize=`${fs}px`;
+  greetingLabel.style.opacity=fade;
+  greetingLabel.style.transform=`translate(-50%,-50%) scale(${scale})`;
 }
 
 /* ---- Hiệu ứng nâng cao ---- */
