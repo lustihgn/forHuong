@@ -20,9 +20,10 @@ canvas{display:block;width:100%;height:100%;touch-action:none;filter:brightness(
 .wish-modal.open .wish-card{opacity:1;transform:none}
 .wish-close{position:absolute;z-index:1;top:11px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.35);border-radius:50%;color:#fff;background:rgba(9,8,27,.55);font:24px/1 Arial,sans-serif;cursor:pointer;transition:transform .25s ease,background .25s ease}
 .wish-close:hover{transform:rotate(90deg);background:rgba(9,8,27,.8)}
- .memory-frame{position:relative;display:grid;width:100%;height:auto;place-items:center;box-sizing:border-box;padding:10px;background:#160d36}
+ .memory-frame{position:relative;display:grid;width:100%;height:auto;place-items:center;box-sizing:border-box;padding:10px;background:radial-gradient(ellipse at 50% 35%,rgba(157,90,190,.3),transparent 70%),linear-gradient(145deg,#21133c,#130d2b 70%,#20102f)}
 .memory-frame.no-photo{display:none}
-.memory-image{display:block;width:auto;height:auto;max-width:100%;max-height:min(30dvh,220px);box-sizing:border-box;object-fit:contain;filter:none;opacity:1;border:1px solid rgba(255,255,255,.18);border-radius:10px}
+.memory-frame:not(.no-photo)::before{content:"";position:absolute;inset:7px;border:1px solid rgba(255,205,235,.32);border-radius:14px;box-shadow:inset 0 0 18px rgba(255,155,220,.08);pointer-events:none}
+.memory-image{position:relative;z-index:1;display:block;width:auto;height:auto;max-width:100%;max-height:min(30dvh,220px);box-sizing:border-box;object-fit:contain;filter:none;opacity:1;padding:7px;border:1px solid rgba(255,225,242,.68);border-radius:12px;background:linear-gradient(145deg,#fff8fc,#f4deef);box-shadow:0 7px 24px rgba(255,104,186,.2),0 0 18px rgba(193,132,255,.12)}
 .wish-content{position:relative;z-index:1}
 .memory-nav{position:absolute;top:50%;display:grid;width:36px;height:36px;place-items:center;transform:translateY(-50%);border:1px solid rgba(255,255,255,.5);border-radius:50%;color:#fff;background:rgba(12,8,31,.7);font:24px/1 Arial,sans-serif;cursor:pointer}
 .memory-nav:hover{background:rgba(12,8,31,.95)}
@@ -118,14 +119,35 @@ const preloadedMemoryImages=Array.from({length:imageCount},(_,i)=>{
   return image;
 });
 let imageRequestId=0,modalOpen=false,nextMemoryPhotoIndex=0;
-function renderMemoryPhoto(imageIndex){
+let memoryImagesReady=false,settledMemoryImages=0;
+const settledMemoryImageSet=new WeakSet();
+function showNextMemoryPhoto(){
+  const available=preloadedMemoryImages.map((image,index)=>({image,index})).filter(entry=>entry.image.naturalWidth>0);
   memoryFrame.replaceChildren();
+  if(!available.length){memoryFrame.classList.add("no-photo");return}
+  const photo=available[nextMemoryPhotoIndex%available.length];
+  nextMemoryPhotoIndex=(nextMemoryPhotoIndex+1)%available.length;
   const image=document.createElement("img");
   image.className="memory-image";
-  image.alt=`Ảnh kỷ niệm ${imageIndex+1}`;
-  image.src=preloadedMemoryImages[imageIndex].src;
+  image.alt=`Ảnh kỷ niệm ${photo.index+1}`;
+  image.src=photo.image.src;
+  memoryFrame.classList.remove("no-photo");
   memoryFrame.appendChild(image);
 }
+function memoryImageSettled(image){
+  if(settledMemoryImageSet.has(image))return;
+  settledMemoryImageSet.add(image);
+  settledMemoryImages++;
+  if(settledMemoryImages===preloadedMemoryImages.length){
+    memoryImagesReady=true;
+    if(modalOpen)showNextMemoryPhoto();
+  }
+}
+preloadedMemoryImages.forEach(image=>{
+  image.addEventListener("load",()=>memoryImageSettled(image),{once:true});
+  image.addEventListener("error",()=>memoryImageSettled(image),{once:true});
+  if(image.complete)memoryImageSettled(image);
+});
 function openWish(item){
   ++imageRequestId;
   document.getElementById("wishSelected").textContent=item.wish;
@@ -134,10 +156,7 @@ function openWish(item){
   wishModal.setAttribute("aria-hidden","false");
   modalOpen=true;
 
-  const photoIndex=nextMemoryPhotoIndex;
-  nextMemoryPhotoIndex=(nextMemoryPhotoIndex+1)%preloadedMemoryImages.length;
-  memoryFrame.classList.remove("no-photo");
-  renderMemoryPhoto(photoIndex);
+  if(memoryImagesReady)showNextMemoryPhoto();
 }
 function closeWish(){
   imageRequestId++;
@@ -521,7 +540,7 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
     if(item.wish){
       ctx.globalAlpha=Math.min(1,p.alpha*1.25);
       const depthScale=.88+.62*p.clarity;
-      const fs=Math.max(7,Math.min(11,scale*1.5))*sp*depthScale,k=fs/20*1.2*(.7+.3*p.itemVis);
+      const fs=Math.max(7,Math.min(11,scale*1.5))*.9*sp*depthScale,k=fs/20*1.2*(.7+.3*p.itemVis);
       if(!backPass&&p.clarity>.3&&p.itemVis>.6)wishHitTargets.push({x:p.x,y:p.y,radius:Math.max(fs*2.4,38),wish:item.wish,index:sphereWishes.indexOf(item.wish)});
       const sprite=wishSprite(item.wish),dw=sprite.w*k,dh=sprite.h*k;
       ctx.shadowBlur=0;
@@ -617,7 +636,7 @@ function drawGreeting(cx,cy,anchorScale,exitT,buildT,time){
   const vis=inP*(1-outP);
   const st=greetingLabel.style;
   if(vis<=.002){st.opacity="0";glShine.style.opacity="0";return}
-  const fs=Math.min(52,Math.max(24,width*.085));
+  const fs=Math.min(52,Math.max(24,width*.085))*.9;
   const float=Math.sin(time*.0016)*fs*.04*vis;
   const y=(1-inP)*fs*.35-outP*fs*.6+float;
   const sc=.92+.08*inP+.06*outP;
@@ -771,13 +790,13 @@ function draw(time){
   const grow=smoother(revealT);
   const formBuild=Math.min(1.2,sinceStart/3600);
   // Chữ chúc: tự hiện lúc 4.2s (mất 3.2s), giữ đến giây thứ 9, tự tan trong 2.6s, nghỉ đến giây thứ 15 rồi lặp lại
-  const GREET_START=4200,GREET_PERIOD=15000,gl=sinceStart-GREET_START;
+  const GREET_START=4200,GREET_PERIOD=15000,gl=sinceStart*1.1-GREET_START;
   const gLocal=gl<0?-1:gl%GREET_PERIOD;
   const greetBuild=gLocal<0?0:clamp01(gLocal/3200);
-  const greetKill=transClock<0?0:clamp01(transClock/2000);   // chạm vào trái tim → chữ tan dần ngay và không hiện lại
+  const greetKill=transClock<0?0:clamp01(transClock*1.1/2000);   // chạm vào trái tim → chữ tan dần ngay và không hiện lại
   const greetOut=Math.max(gLocal<0?0:clamp01((gLocal-9000)/2600),greetKill);
 
-  sphereSpinAngle+=.08*sec;
+  sphereSpinAngle+=.088*sec;
   sphereZoom+=(targetSphereZoom-sphereZoom)*(1-Math.exp(-7*sec));
 
   if(!dragPointer){
@@ -854,7 +873,7 @@ function draw(time){
   }
   drawFx(sec,time,cx,cy,heartScale,visible,grow);
   const anchorScale=scale*HEART_SIZE*1.18*1.2*.88*1.4*2.2;   // cố định theo cỡ trái tim ban đầu → chữ không bị trượt
-  drawGreeting(cx,cy,anchorScale,greetOut,greetBuild,time);
+  drawGreeting(cx,cy,anchorScale,greetOut,greetBuild,time*1.1);
 }
 
 /* ---- Tương tác (chạm, kéo, zoom) ---- */
