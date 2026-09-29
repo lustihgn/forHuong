@@ -17,14 +17,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .wish-modal.open .wish-card{opacity:1;transform:none}
 .wish-close{position:absolute;z-index:1;top:11px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.35);border-radius:50%;color:#fff;background:rgba(9,8,27,.55);font:24px/1 Arial,sans-serif;cursor:pointer;transition:transform .25s ease,background .25s ease}
 .wish-close:hover{transform:rotate(90deg);background:rgba(9,8,27,.8)}
-.memory-frame{display:grid;width:100%;max-height:45dvh;overflow-y:auto;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px;box-sizing:border-box;background:#160d36}
+.memory-frame{position:relative;display:grid;width:100%;height:min(45dvh,360px);place-items:center;box-sizing:border-box;padding:10px;background:#160d36}
 .memory-frame.no-photo{display:none}
-.memory-image{display:block;width:100%;aspect-ratio:1;object-fit:cover;border:1px solid rgba(255,255,255,.18);border-radius:10px}
+.memory-image{display:block;width:100%;height:100%;object-fit:contain;border:1px solid rgba(255,255,255,.18);border-radius:10px}
+.memory-nav{position:absolute;top:50%;display:grid;width:36px;height:36px;place-items:center;transform:translateY(-50%);border:1px solid rgba(255,255,255,.5);border-radius:50%;color:#fff;background:rgba(12,8,31,.7);font:24px/1 Arial,sans-serif;cursor:pointer}
+.memory-nav:hover{background:rgba(12,8,31,.95)}
+.memory-prev{left:16px}
+.memory-next{right:16px}
+.memory-counter{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);padding:4px 9px;border-radius:12px;color:#fff;background:rgba(12,8,31,.72);font:12px Arial,sans-serif}
 .wish-content{padding:20px 24px 26px}
-.wish-content h2,.wish-content .wish-selected,.wish-content .wish-message{opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .6s cubic-bezier(.22,1,.36,1)}
-.wish-modal.open .wish-content h2{opacity:1;transform:none;transition-delay:.12s}
-.wish-modal.open .wish-content .wish-selected{opacity:1;transform:none;transition-delay:.2s}
-.wish-modal.open .wish-content .wish-message{opacity:1;transform:none;transition-delay:.28s}
+.wish-content h2,.wish-content .wish-selected,.wish-content .wish-message{opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
+.wish-modal.open .wish-content h2,.wish-modal.open .wish-content .wish-selected,.wish-modal.open .wish-content .wish-message{opacity:1;transform:none;transition-delay:0s}
 .wish-content h2{margin:0 0 9px;color:#ffb4dc;font:600 20px Arial,sans-serif}
 .wish-selected{margin:0 0 10px;color:#fff;font:600 17px Arial,sans-serif}
 .wish-message{margin:0;color:#e8dcf3;font:15px/1.6 Arial,sans-serif}
@@ -106,36 +109,32 @@ const memoryFrame=document.querySelector(".memory-frame");
 const imageCount=12;
 const preloadedMemoryImages=Array.from({length:imageCount},(_,i)=>{
   const image=new Image();
-  const loaded=new Promise(resolve=>{
-    image.onload=()=>resolve(image);
-    image.onerror=()=>resolve(null);
-  });
   image.src=`anh${i+1}.jpg`;
-  return loaded;
+  return image;
 });
-let imageRequestId=0,modalOpen=false;
-async function openWish(item){
-  const requestId=++imageRequestId;
+let imageRequestId=0,modalOpen=false,availableMemoryPhotos=[],nextMemoryPhotoIndex=0;
+function renderMemoryPhoto(imageIndex){
   memoryFrame.replaceChildren();
-  memoryFrame.classList.add("no-photo");
-
+  const image=document.createElement("img");
+  image.className="memory-image";
+  image.alt=`Ảnh kỷ niệm ${imageIndex+1}`;
+  image.src=availableMemoryPhotos[imageIndex].src;
+  memoryFrame.appendChild(image);
+}
+function openWish(item){
+  ++imageRequestId;
   document.getElementById("wishSelected").textContent=item.wish;
   document.getElementById("wishMessage").textContent=extraWishes[Math.abs(item.index)%extraWishes.length];
   wishModal.classList.add("open");
   wishModal.setAttribute("aria-hidden","false");
   modalOpen=true;
 
-  const photos=(await Promise.all(preloadedMemoryImages)).filter(Boolean);
-  if(requestId!==imageRequestId||photos.length===0)return;
-
-  for(const photo of photos){
-    const image=document.createElement("img");
-    image.className="memory-image";
-    image.alt="Ảnh kỷ niệm";
-    image.src=photo.src;
-    memoryFrame.appendChild(image);
-  }
+  const loadedPhotos=preloadedMemoryImages.filter(image=>image.complete&&image.naturalWidth>0);
+  availableMemoryPhotos=loadedPhotos.length?loadedPhotos:preloadedMemoryImages;
+  const photoIndex=nextMemoryPhotoIndex%availableMemoryPhotos.length;
+  nextMemoryPhotoIndex=(photoIndex+1)%availableMemoryPhotos.length;
   memoryFrame.classList.remove("no-photo");
+  renderMemoryPhoto(photoIndex);
 }
 function closeWish(){
   imageRequestId++;
@@ -602,10 +601,11 @@ function drawRingLayer(cx,cy,back){
 
 /* ---- Lời chúc ---- */
 function drawGreeting(cx,cy,heartScale,visible,retreat,greetBuild){
-  const fade=visible*greetBuild*(1-smooth(retreat));
+  const enter=smoother(greetBuild),exit=smoother(retreat);
+  const fade=visible*enter*(1-exit);
   if(fade<=.001)return;
   const fs=Math.min(52,Math.max(24,width*.085)),text="Happy 20-10";
-  const rise=(1-greetBuild)*fs*.55-smooth(retreat)*fs*.4+Math.sin(frameTime*.0016)*fs*.035;
+  const rise=(1-enter)*fs*.55-exit*fs*.4+Math.sin(frameTime*.0016)*fs*.035;
   const textY=cy-heartScale*20-fs*1.6+rise;
   ctx.save();ctx.globalAlpha=fade;ctx.textAlign="center";ctx.textBaseline="middle";
   ctx.font=`italic 600 ${fs}px ${SCRIPT_FONT}`;
@@ -759,13 +759,13 @@ function draw(time){
   const visible=smoother(sinceStart/1800);
   const bgFade=smoother(sinceStart/1400);
   const retreat=transClock<0?0:smoother(transClock/3200);
-  const greetOut=transClock<0?0:smoother(transClock/2600);
+  const greetOut=transClock<0?0:clamp01(transClock/2600);
   const heartZoom=2.2-1.26*retreat;
   const revealT=transClock<0?0:clamp01((transClock-700)/7000);
   const ringVisible=smoother(revealT/.75);
   const grow=smoother(revealT);
   const formBuild=Math.min(1.2,sinceStart/3600);
-  const greetBuild=smoother((sinceStart-4800)/2200);
+  const greetBuild=clamp01((sinceStart-4800)/2200);
 
   sphereSpinAngle+=.08*sec;
   sphereZoom+=(targetSphereZoom-sphereZoom)*(1-Math.exp(-7*sec));
