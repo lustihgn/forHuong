@@ -23,7 +23,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none;filter:brightness(
 .wish-close:hover{transform:rotate(90deg);background:rgba(9,8,27,.8)}
  .memory-frame{position:relative;display:grid;width:100%;height:auto;place-items:center;box-sizing:border-box;padding:11px;border:1px solid rgba(255,190,226,.58);border-radius:22px;background:radial-gradient(ellipse at 50% 0,rgba(255,175,225,.2),transparent 58%),linear-gradient(145deg,#30204b,#130d2b 70%,#271333);box-shadow:inset 0 0 0 3px rgba(255,255,255,.025),inset 0 0 22px rgba(211,151,255,.12),0 10px 34px rgba(193,110,220,.2)}
 .memory-frame::before{position:absolute;inset:5px;border:1px solid rgba(235,196,255,.2);border-radius:16px;background:linear-gradient(90deg,#ffd7f2 0 12px,transparent 12px) left top/16px 1px no-repeat,linear-gradient(#ffd7f2 0 12px,transparent 12px) left top/1px 16px no-repeat,linear-gradient(270deg,#ffd7f2 0 12px,transparent 12px) right top/16px 1px no-repeat,linear-gradient(#ffd7f2 0 12px,transparent 12px) right top/1px 16px no-repeat,linear-gradient(90deg,#ffd7f2 0 12px,transparent 12px) left bottom/16px 1px no-repeat,linear-gradient(0deg,#ffd7f2 0 12px,transparent 12px) left bottom/1px 16px no-repeat,linear-gradient(270deg,#ffd7f2 0 12px,transparent 12px) right bottom/16px 1px no-repeat,linear-gradient(0deg,#ffd7f2 0 12px,transparent 12px) right bottom/1px 16px no-repeat;content:"";pointer-events:none}
-.memory-frame::after{position:absolute;top:10px;left:50%;z-index:2;padding:3px 10px;transform:translateX(-50%);border:1px solid rgba(255,218,241,.38);border-radius:20px;color:#ffe0f2;background:rgba(30,17,49,.88);box-shadow:0 2px 12px rgba(10,5,25,.35);content:"✧  ✦ KỶ NIỆM ✦  ✧";font:600 9px/1.3 Arial,sans-serif;letter-spacing:1.5px;white-space:nowrap;pointer-events:none}
 .memory-frame.no-photo{display:none}
 .memory-image{position:relative;z-index:1;display:block;width:100%;height:auto;max-width:100%;max-height:min(60dvh,480px);box-sizing:border-box;object-fit:contain;filter:none;opacity:1;border:1px solid rgba(255,226,246,.22);border-radius:13px;box-shadow:0 5px 18px rgba(0,0,0,.32)}
 .wish-content{position:relative;z-index:1}
@@ -88,7 +87,7 @@ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294
 
 const particles=[],ringParticles=[],outerRingParticles=[],sphereDecorations=[],wishHitTargets=[];
 let ringDraw=[],outerDraw=[];   // danh sách hạt vành đai đã cắt theo chất lượng & sắp theo màu (đỡ đổi fillStyle liên tục)
-const particleCount=7000,ringCount=2100,outerRingCount=735,decorCount=300;
+const particleCount=7000,ringCount=2250,outerRingCount=800,decorCount=300;
 const RING_TILT=-.2,RING_BANDS=[[0,.26,.34],[.32,.6,.36],[.66,.7,.08],[.76,1,.22]];
 const RING_STOPS=[[255,205,222],[224,157,255],[142,190,255]];
 let pLimit=particleCount,rLimit=ringCount,oLimit=outerRingCount,sizeComp=1;
@@ -596,7 +595,7 @@ function drawRingPass(g,cx,cy,scale,visible,time,backPass,list){
     const x=cx+lx*ct-ly*st,y=oy+lx*st+ly*ct;
     const depthFade=backPass?.12+.88*smooth(sA+1):.72+.28*smooth((sA+.3)/.6);
     const tw=p.star?.65+.35*Math.sin(time*.004+p.tw):.94;
-    const alpha=Math.min(1,Math.max(minOp,p.opacity)*visible*depthFade*tw*1.03);
+    const alpha=Math.min(1,Math.max(minOp,p.opacity)*visible*depthFade*tw*1.12);
     const r=Math.max(.45,p.size*scale*sizeComp);
     if(p.color!==lastColor){g.fillStyle=p.color;lastColor=p.color}
     if(p.star){
@@ -932,7 +931,7 @@ canvas.addEventListener("pointerup",e=>{
   if(!dragPointer||dragPointer.id!==e.pointerId)return;
   if(performance.now()-dragPointer.startTime>250)dragPointer.moved=true;
   if(!dragPointer.moved){
-    if(greetingDismissTime===null&&animClock>=4200)greetingDismissTime=animClock;
+    if(greetingDismissTime===null)greetingDismissTime=animClock;
     if(transitionStartTime===null){
       transitionStartTime=performance.now();transClock=0;
       resetPerf(25);   // nhanh chóng đo và hạ tải hiệu ứng phụ nếu thiết bị chậm
