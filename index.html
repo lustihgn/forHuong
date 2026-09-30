@@ -12,28 +12,33 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000208}
 canvas{display:block;width:100%;height:100%;touch-action:none;filter:brightness(1.08)}
 .greeting-label{position:fixed;z-index:1;left:0;top:0;opacity:0;transform:translate(-50%,-50%);pointer-events:none;white-space:nowrap;font-family:"Dancing Script","Segoe Script","Brush Script MT",cursive;font-weight:700;font-style:normal;will-change:transform,opacity,filter}
-.gl-base{display:block;color:#fff0fa;background:linear-gradient(110deg,#ffd4ed 8%,#fff 42%,#ffc5e8 68%,#e4d2ff 92%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;-webkit-text-stroke:.35px rgba(255,224,246,.6);text-shadow:0 0 8px rgba(255,160,218,.7),0 0 22px rgba(167,120,255,.72)}
+.gl-base{display:block;color:#eadcff;background:linear-gradient(110deg,#f2eaff 8%,#d3a0ff 42%,#a894ff 68%,#9180ff 92%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;-webkit-text-stroke:.45px rgba(231,215,255,.8);text-shadow:0 0 7px rgba(211,151,255,.78),0 0 17px rgba(145,128,255,.62)}
 .gl-shine{position:absolute;left:0;top:0;display:block;color:transparent;-webkit-text-fill-color:transparent;background-image:linear-gradient(105deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.95) 50%,rgba(255,255,255,0) 60%);background-size:300% 100%;background-repeat:no-repeat;background-position:100% 0;-webkit-background-clip:text;background-clip:text;opacity:0}
 .wish-modal{position:fixed;inset:0;z-index:2;display:grid;place-items:center;padding:22px;background:rgba(2,5,20,.72);backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .35s cubic-bezier(.22,.8,.24,1),visibility .35s}
 .wish-modal.open{opacity:1;visibility:visible}
-.wish-card{position:relative;width:min(360px,100%);max-height:calc(100dvh - 44px);overflow-y:auto;border:1px solid rgba(255,177,224,.45);border-radius:24px;color:#fff2fa;text-align:center;background:linear-gradient(155deg,#24133d,#10152d 68%,#261333);box-shadow:0 18px 70px rgba(255,66,176,.28);opacity:0;transform:translateY(22px) scale(.94);transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease;will-change:transform,opacity}
+ .wish-card{position:relative;width:min(360px,100%);max-height:calc(100dvh - 44px);overflow-y:auto;border:1px solid rgba(255,177,224,.58);border-radius:26px;color:#fff2fa;text-align:center;background:radial-gradient(ellipse at 50% 0,rgba(168,111,213,.2),transparent 48%),linear-gradient(155deg,#291943,#10152d 68%,#281332);box-shadow:inset 0 0 0 3px rgba(255,255,255,.025),inset 0 0 32px rgba(201,133,255,.08),0 18px 70px rgba(255,66,176,.3);opacity:0;transform:translateY(22px) scale(.94);transition:transform .5s cubic-bezier(.22,1,.36,1),opacity .35s ease;will-change:transform,opacity}
+.wish-card::before{position:absolute;inset:6px;border:1px solid rgba(235,196,255,.14);border-radius:20px;content:"";pointer-events:none}
 .wish-modal.open .wish-card{opacity:1;transform:none}
 .wish-close{position:absolute;z-index:1;top:11px;right:12px;width:36px;height:36px;border:1px solid rgba(255,255,255,.35);border-radius:50%;color:#fff;background:rgba(9,8,27,.55);font:24px/1 Arial,sans-serif;cursor:pointer;transition:transform .25s ease,background .25s ease}
 .wish-close:hover{transform:rotate(90deg);background:rgba(9,8,27,.8)}
- .memory-frame{position:relative;display:grid;width:100%;height:auto;place-items:center;box-sizing:border-box;padding:10px;background:radial-gradient(ellipse at 50% 35%,rgba(157,90,190,.3),transparent 70%),linear-gradient(145deg,#21133c,#130d2b 70%,#20102f)}
+ .memory-frame{position:relative;display:grid;width:100%;height:auto;place-items:center;box-sizing:border-box;padding:11px;border:1px solid rgba(255,190,226,.58);border-radius:22px;background:radial-gradient(ellipse at 50% 0,rgba(255,175,225,.2),transparent 58%),linear-gradient(145deg,#30204b,#130d2b 70%,#271333);box-shadow:inset 0 0 0 3px rgba(255,255,255,.025),inset 0 0 22px rgba(211,151,255,.12),0 10px 34px rgba(193,110,220,.2)}
+.memory-frame::before{position:absolute;inset:5px;border:1px solid rgba(235,196,255,.2);border-radius:16px;background:linear-gradient(90deg,#ffd7f2 0 12px,transparent 12px) left top/16px 1px no-repeat,linear-gradient(#ffd7f2 0 12px,transparent 12px) left top/1px 16px no-repeat,linear-gradient(270deg,#ffd7f2 0 12px,transparent 12px) right top/16px 1px no-repeat,linear-gradient(#ffd7f2 0 12px,transparent 12px) right top/1px 16px no-repeat,linear-gradient(90deg,#ffd7f2 0 12px,transparent 12px) left bottom/16px 1px no-repeat,linear-gradient(0deg,#ffd7f2 0 12px,transparent 12px) left bottom/1px 16px no-repeat,linear-gradient(270deg,#ffd7f2 0 12px,transparent 12px) right bottom/16px 1px no-repeat,linear-gradient(0deg,#ffd7f2 0 12px,transparent 12px) right bottom/1px 16px no-repeat;content:"";pointer-events:none}
+.memory-frame::after{position:absolute;top:10px;left:50%;z-index:2;padding:3px 10px;transform:translateX(-50%);border:1px solid rgba(255,218,241,.38);border-radius:20px;color:#ffe0f2;background:rgba(30,17,49,.88);box-shadow:0 2px 12px rgba(10,5,25,.35);content:"✧  ✦ KỶ NIỆM ✦  ✧";font:600 9px/1.3 Arial,sans-serif;letter-spacing:1.5px;white-space:nowrap;pointer-events:none}
 .memory-frame.no-photo{display:none}
-.memory-frame:not(.no-photo)::before{content:"";position:absolute;inset:7px;border:1px solid rgba(255,205,235,.32);border-radius:14px;box-shadow:inset 0 0 18px rgba(255,155,220,.08);pointer-events:none}
-.memory-image{position:relative;z-index:1;display:block;width:100%;height:auto;max-width:100%;max-height:min(60dvh,480px);box-sizing:border-box;object-fit:contain;filter:none;opacity:1;padding:7px;border:1px solid rgba(255,225,242,.68);border-radius:12px;background:linear-gradient(145deg,#fff8fc,#f4deef);box-shadow:0 7px 24px rgba(255,104,186,.2),0 0 18px rgba(193,132,255,.12)}
+.memory-image{position:relative;z-index:1;display:block;width:100%;height:auto;max-width:100%;max-height:min(60dvh,480px);box-sizing:border-box;object-fit:contain;filter:none;opacity:1;border:1px solid rgba(255,226,246,.22);border-radius:13px;box-shadow:0 5px 18px rgba(0,0,0,.32)}
 .wish-content{position:relative;z-index:1}
 .memory-nav{position:absolute;top:50%;display:grid;width:36px;height:36px;place-items:center;transform:translateY(-50%);border:1px solid rgba(255,255,255,.5);border-radius:50%;color:#fff;background:rgba(12,8,31,.7);font:24px/1 Arial,sans-serif;cursor:pointer}
 .memory-nav:hover{background:rgba(12,8,31,.95)}
 .memory-prev{left:16px}
 .memory-next{right:16px}
 .memory-counter{position:absolute;bottom:17px;left:50%;transform:translateX(-50%);padding:4px 9px;border-radius:12px;color:#fff;background:rgba(12,8,31,.72);font:12px Arial,sans-serif}
-.wish-content{padding:20px 24px 26px}
+ .wish-content{position:relative;margin:0 18px 20px;padding:20px 18px 22px;border:1px solid rgba(255,177,224,.6);border-radius:21px;background:radial-gradient(ellipse at 50% 0,rgba(255,198,230,.13),transparent 68%),linear-gradient(145deg,rgba(255,198,230,.09),rgba(161,119,224,.12));box-shadow:inset 0 0 0 3px rgba(255,255,255,.025),inset 0 0 24px rgba(255,165,220,.09),0 9px 28px rgba(0,0,0,.25)}
+.wish-content::before{position:absolute;inset:6px;border:1px solid rgba(255,210,239,.16);border-radius:15px;content:"";pointer-events:none}
 .wish-content h2,.wish-content .wish-selected,.wish-content .wish-message{opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
 .wish-modal.open .wish-content h2,.wish-modal.open .wish-content .wish-selected,.wish-modal.open .wish-content .wish-message{opacity:1;transform:none;transition-delay:0s}
-.wish-content h2{margin:0 0 9px;color:#ffb4dc;font:600 16px Arial,sans-serif}
+ .wish-content h2{margin:0 0 11px;color:#ffd0ea;font:600 16px Arial,sans-serif;text-shadow:0 0 13px rgba(255,143,207,.35)}
+.wish-content h2::before{display:block;margin:0 auto 5px;color:#ffc9e8;content:"✧ ･ﾟ: *✧* :ﾟ･ ✧";font:12px/1 Arial,sans-serif;letter-spacing:2px;text-shadow:0 0 10px rgba(255,143,207,.8)}
+.wish-content h2::after{display:block;width:70px;height:1px;margin:9px auto 0;background:linear-gradient(90deg,transparent,rgba(255,196,230,.8),#fff1fb,rgba(255,196,230,.8),transparent);box-shadow:0 0 8px rgba(255,160,220,.45);content:""}
 .wish-selected{margin:0 0 10px;color:#fff;font:600 13.6px Arial,sans-serif}
 .wish-message{margin:0;color:#e8dcf3;font:12px/1.6 Arial,sans-serif}
 @media(prefers-reduced-motion:reduce){.memory-image,.memory-frame,.wish-modal,.wish-card,.wish-content h2,.wish-content .wish-selected,.wish-content .wish-message{transition:none}}
@@ -83,13 +88,13 @@ function random(){seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294
 
 const particles=[],ringParticles=[],outerRingParticles=[],sphereDecorations=[],wishHitTargets=[];
 let ringDraw=[],outerDraw=[];   // danh sách hạt vành đai đã cắt theo chất lượng & sắp theo màu (đỡ đổi fillStyle liên tục)
-const particleCount=6500,ringCount=2100,outerRingCount=735,decorCount=300;
+const particleCount=7000,ringCount=2100,outerRingCount=735,decorCount=300;
 const RING_TILT=-.2,RING_BANDS=[[0,.26,.34],[.32,.6,.36],[.66,.7,.08],[.76,1,.22]];
 const RING_STOPS=[[255,205,222],[224,157,255],[142,190,255]];
 let pLimit=particleCount,rLimit=ringCount,oLimit=outerRingCount,sizeComp=1;
 let shadowEnabled=false;   // shadowBlur rất nặng trên GPU điện thoại → tắt hẳn
 let lastFrameTime=0,hiddenAt=null,width=0,height=0,pixelRatio=1;
-let animationStartTime=null,transitionStartTime=null;
+let animationStartTime=null,transitionStartTime=null,greetingDismissTime=null;
 let cameraYaw=0,cameraPitch=0,targetCameraYaw=0,targetCameraPitch=0;
 let inertiaYaw=0,inertiaPitch=0,velYaw=0,velPitch=0,lastMoveTime=0;
 let sphereSpinAngle=0,sphereZoom=1,targetSphereZoom=1;
@@ -101,7 +106,7 @@ const floaters=[],shooters=[],ripples=[];
 let nextShooter=4500,spawnAcc=0,frameTime=0;
 const FLOAT_RGB=[[255,190,235],[210,170,255],[255,255,255],[150,180,255]];
 
-const stars=Array.from({length:220},()=>({x:(random()-.5)*4.8,y:(random()-.5)*3.2,z:(random()-.5)*4.8,radius:.3+random()*.64,opacity:.35+random()*.4,tw:random()*Math.PI*2,drift:.000015+random()*.000035}));
+const stars=Array.from({length:270},()=>({x:(random()-.5)*4.8,y:(random()-.5)*3.2,z:(random()-.5)*4.8,radius:.3+random()*.64,opacity:.35+random()*.4,tw:random()*Math.PI*2,drift:.000015+random()*.000035}));
 const projectedStars=stars.map(star=>({star,x:0,y:0,radius:0,a:0,depth:1}));
 
 const extraWishes=["Mong hôm nay mang đến cho bạn thật nhiều điều dịu dàng.","Dù ngày dài đến đâu, hãy nhớ bạn luôn xứng đáng được yêu thương.","Chúc mỗi ước mơ của bạn đều tìm được đường thành hiện thực.","Mong bạn luôn gặp những người khiến trái tim mình bình yên.","Hãy giữ nụ cười nhé — nó làm thế giới này sáng hơn nhiều.","Chúc bạn có thật nhiều khoảnh khắc nhỏ mà vui thật lâu.","Bạn đặc biệt hơn bạn nghĩ, và được thương nhiều hơn bạn biết.","Mong mọi điều tốt đẹp sẽ nhẹ nhàng tìm đến bên bạn.","Chúc bạn luôn đủ mạnh mẽ để theo đuổi điều mình yêu.","Mong những ngày bình thường cũng đem đến niềm vui thật đẹp.","Chúc trái tim bạn luôn ấm áp và bình yên.","Mỗi ngày mới là một cơ hội để bắt đầu điều tuyệt vời.","Mong bạn luôn tự hào về chính mình, dù chỉ là một bước nhỏ.","Chúc mọi cố gắng của bạn sớm nở thành quả ngọt.","Mong bạn gặp thật nhiều bất ngờ khiến mình mỉm cười.","Hãy tin rằng những điều tốt đẹp đang trên đường tìm đến bạn.","Chúc bạn luôn được lắng nghe, thấu hiểu và trân trọng.","Mong thanh xuân của bạn ngập tràn những kỷ niệm đáng nhớ.","Chúc bạn ngủ ngon, thức dậy vui và luôn có điều để mong chờ.","Dù ở đâu, mong bạn luôn tìm thấy một nơi gọi là bình yên."];
@@ -382,7 +387,7 @@ function randomHeartT(){
   return(lo+f)/N*Math.PI*2;
 }
 function sampleHeartPoint(){
-  const depth=.08+.92*Math.pow(random(),1/5),p=heart(randomHeartT());
+  const depth=.08+.92*Math.pow(random(),1/4.6),p=heart(randomHeartT());
   return{x:p.x*depth,y:p.y*depth,depth};
 }
 const HEART_STOPS=[[235,220,255],[211,151,255],[145,126,255]];
@@ -554,9 +559,14 @@ function drawSpherePass(cx,cy,scale,time,backPass,reveal,retreat){
       drawButterfly(p.x,p.y,size,time,item.phase,Math.floor(item.phase/(Math.PI*2)*3));
     }else if(item.sparkle){
       const size=Math.max(10,Math.min(15,scale*1.6))*sp*(.6+.4*p.itemVis);
+      const twinkle=.72+.28*Math.sin(time*.006+item.phase);
+      ctx.globalCompositeOperation="lighter";
+      drawGlow(p.x,p.y,size*1.9,p.alpha*.34*twinkle,220,185,255);
+      ctx.globalCompositeOperation="source-over";
+      ctx.globalAlpha=Math.min(1,p.alpha*twinkle*1.2);
       ctx.shadowColor="#c69aff";
       ctx.shadowBlur=useShadow?size*(1.3+Math.max(0,p.front)*1.1)*glow:0;
-      drawStar4(p.x,p.y,size*.6,time,item.phase);
+      drawStar4(p.x,p.y,size*.72,time,item.phase);
     }else if(item.heart){
       const size=Math.max(8,Math.min(12,scale*1.3))*sp*(.6+.4*p.itemVis);
       ctx.globalCompositeOperation="lighter";
@@ -642,11 +652,11 @@ function drawGreeting(cx,cy,anchorScale,exitT,buildT,time){
   const vis=inP*(1-outP);
   const st=greetingLabel.style;
   if(vis<=.002){st.opacity="0";glShine.style.opacity="0";return}
-  const fs=Math.min(52,Math.max(24,width*.085))*.9*.9;
+  const fs=Math.min(56,Math.max(26,width*.09))*.9*.9;
   const float=Math.sin(time*.0016)*fs*.04*vis;
   const y=(1-inP)*fs*.35-outP*fs*.6+float;
   const sc=.92+.08*inP+.06*outP;
-  const blur=(1-inP)*10+outP*12;
+  const blur=(1-inP)*4+outP*5;
   const glow=.75+.25*Math.sin(time*.002);
   st.left=`${cx}px`;
   st.top=`${cy-anchorScale*20-fs*1.6}px`;
@@ -655,7 +665,7 @@ function drawGreeting(cx,cy,anchorScale,exitT,buildT,time){
   st.opacity=vis;
   st.transform=`translate(-50%,-50%) translate3d(0,${y}px,0) scale(${sc})`;
   st.filter=blur>.05?`blur(${blur}px)`:"none";
-  glBase.style.textShadow=`0 0 ${6+4*glow}px rgba(190,160,255,${.6+.25*glow}),0 0 ${16+12*glow}px rgba(145,105,255,${.45+.3*glow})`;
+  glBase.style.textShadow=`0 0 ${7+4*glow}px rgba(211,151,255,${.76+.18*glow}),0 0 ${17+10*glow}px rgba(145,128,255,${.58+.25*glow})`;
   // vệt sáng: chỉ chạy khi chữ đã hiện đủ, cứ ~5 giây quét 1 lần từ trái sang phải
   const q=((time%5200)/1500);
   if(inP>.98&&outP<.05&&q<1){
@@ -795,12 +805,9 @@ function draw(time){
   const ringVisible=smoother(revealT/.75);
   const grow=smoother(revealT);
   const formBuild=Math.min(1.2,sinceStart/4200);
-  // Chữ chúc: tự hiện lúc 4.2s (mất 3.2s), giữ đến giây thứ 9, tự tan trong 2.6s, nghỉ đến giây thứ 15 rồi lặp lại
-  const GREET_START=4200,GREET_PERIOD=15000,gl=sinceStart*1.1-GREET_START;
-  const gLocal=gl<0?-1:gl%GREET_PERIOD;
-  const greetBuild=gLocal<0?0:clamp01(gLocal/3200);
-  const greetKill=transClock<0?0:clamp01(transClock*1.1/2000);   // chạm vào trái tim → chữ tan dần ngay và không hiện lại
-  const greetOut=Math.max(gLocal<0?0:clamp01((gLocal-9000)/2600),greetKill);
+  // Chữ hiện một lần sau 4.2 giây, giữ nguyên đến khi người xem chạm/click màn hình.
+  const greetBuild=clamp01((sinceStart-4200)/3200);
+  const greetOut=greetingDismissTime===null?0:smoother((sinceStart-greetingDismissTime)/900);
 
   sphereSpinAngle+=.088*sec;
   sphereZoom+=(targetSphereZoom-sphereZoom)*(1-Math.exp(-7*sec));
@@ -858,7 +865,8 @@ function draw(time){
     }
     const scatter=smoother(retreat);
     const particleFade=1;
-    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.32*particleFade);
+    const centerDim=1-.72*smooth(1-Math.abs(x)/5)*smooth(1-Math.abs(y+1)/8);
+    const al=Math.min(1,(p.opacity+sparkle+twinkle*.18)*visible*arrive*.32*particleFade*centerDim);
     ctx.globalAlpha=al;
     const spread=heartScale*.1*scatter,dir=Math.hypot(x,y)||1;
     const px=cx+(x+x*pulseExtra)*heartScale+chX+x/dir*spread,py=cy+(y+y*pulseExtra)*heartScale+chY+y/dir*spread;
@@ -924,6 +932,7 @@ canvas.addEventListener("pointerup",e=>{
   if(!dragPointer||dragPointer.id!==e.pointerId)return;
   if(performance.now()-dragPointer.startTime>250)dragPointer.moved=true;
   if(!dragPointer.moved){
+    if(greetingDismissTime===null&&animClock>=4200)greetingDismissTime=animClock;
     if(transitionStartTime===null){
       transitionStartTime=performance.now();transClock=0;
       resetPerf(25);   // nhanh chóng đo và hạ tải hiệu ứng phụ nếu thiết bị chậm
