@@ -802,6 +802,7 @@ function draw(time){
   const heartZoom=2.2-1.26*retreat;
   const revealT=transClock<0?0:clamp01((transClock-700)/7000);
   const ringVisible=smoother(revealT/.75);
+  const ringGrowth=transClock<0?0:smoother((transClock-200)/2400);
   const grow=smoother(revealT);
   const formBuild=Math.min(1.2,sinceStart/4200);
   // Chữ hiện một lần sau 4.2 giây, giữ nguyên đến khi người xem chạm/click màn hình.
@@ -828,8 +829,9 @@ function draw(time){
   const beat=Math.pow(Math.max(0,Math.sin(time*.0021)),2)*.85+Math.pow(Math.max(0,Math.sin(time*.0021-.55)),2)*.35;
   const pulse=1+beat*.045*(1-.5*retreat);
   const scale=Math.min(width,height)*(width<=600?.038:.0135)*.5*.45;
-  const zs=scale*sphereZoom*(.6+.4*grow),sphereScale=zs*1.2*1.3*.9;
-  const ringScale=zs*(.45+.55*ringVisible);
+  const zs=scale*sphereZoom*(.6+.4*grow),ringExpand=.015+.985*ringGrowth;
+  const sphereScale=zs*1.2*1.3*.9*ringExpand;
+  const ringScale=zs*ringExpand;
   const heartScale=scale*HEART_SIZE*1.18*1.2*.88*1.4*pulse*heartZoom,pulseExtra=(pulse-1)*.6;
   frameTime=time;
   ctx.globalCompositeOperation="lighter";
